@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF/Html閱讀地圖</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // 設定 PDF Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        /* --- 1. 核心佈局 --- */
+        body { margin: 0; padding: 0; background: #525659; font-family: "Microsoft JhengHei", -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* 編輯模式工具列 */
+        .toolbar { 
+            background: #2c2c2c; color: white; padding: 10px 20px; display: flex; align-items: center; gap: 10px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 100; flex-shrink: 0; flex-wrap: wrap; 
+        }
+        
+        /* 閱讀模式工具列 (預設隱藏) */
+        .reader-toolbar { 
+            background: #202b38; color: white; padding: 15px 20px; display: none; align-items: center; justify-content: space-between; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 101; flex-shrink: 0; 
+        }
+
+        h1 { margin: 0; font-size: 1.2em; color: #fff; margin-right: 15px; display:flex; align-items:center; gap:8px;}
+        
+        /* 按鈕樣式 */
+        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; background: #444; color: white; transition: 0.2s; white-space: nowrap; font-size: 0.9em; }
+        button:hover { background: #666; transform: translateY(-1px); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button.primary { background: #28a745; }
+        button.export { background: #17a2b8; }
+        button.danger { background: #dc3545; }
+
+        /* 搜尋框 */
+        .search-box { display: flex; align-items: center; background: white; border-radius: 4px; overflow: hidden; margin-left: auto; }
+        .search-input { border: none; padding: 6px 10px; outline: none; font-size: 0.9em; width: 160px; color:#333; }
+        .search-btn { background: #ffc107; color: #333; border-radius: 0; padding: 6px 10px; }
+        .search-btn:hover { background: #e0a800; }
+
+        /* --- 2. 工作區 --- */
+        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
+        
+        /* PDF 容器 */
+        #viewerContainer { 
+            flex: 1; overflow-y: auto; overflow-x: auto; position: relative; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px; padding-bottom: 80px; 
+            background: #525659;
+        }
+        
+        /* 單頁 PDF 樣式 */
+        .pdf-page { position: relative; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); background: white; }
+        /* 文字層 (透明但可選取) */
+        .textLayer { opacity: 0.2; mix-blend-mode: multiply; }
+        
+        /* 標註高亮 */
+        .highlight-span { background-color: rgba(255, 235, 59, 0.4); cursor: pointer; border-bottom: 2px solid transparent; }
+        .highlight-span:hover { background-color: rgba(255, 235, 59, 0.6); }
+
+        /* --- 3. 側邊欄 --- */
+        .sidebar { 
+            width: 320px; background: #f8f9fa; border-left: 1px solid #ccc; 
+            display: flex; flex-direction: column; box-shadow: -2px 0 5px rgba(0,0,0,0.1); z-index: 90; 
+        }
+        .sidebar-header { padding: 12px 15px; background: white; border-bottom: 1px solid #ddd; display:flex; justify-content:space-between; align-items:center; }
+        .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
+        
+        .list-item { 
+            background: white; padding: 10px; margin-bottom: 8px; border-radius: 6px; 
+            border: 1px solid #ddd; cursor: pointer; border-left: 4px solid #ccc; transition:0.2s;
+        }
+        .list-item:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .rtm-tag { font-size:0.75em; background:#eee; padding:2px 6px; border-radius:4px; color:#555; margin-right:5px; font-weight:bold; }
+        .priority-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+
+        /* --- 4. 浮動元件 --- */
+        /* 分批控制器 */
+        .pagination-bar { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            background: rgba(0,0,0,0.85); padding: 8px 20px; border-radius: 30px; 
+            display: flex; gap: 15px; align-items: center; color: white; 
+            backdrop-filter: blur(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 1000; 
+        }
+
+        /* 搜尋面板 */
+        #searchPanel { 
+            position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; 
+            background: white; border: 1px solid #ccc; border-radius: 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; 
+        }
+        .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color:#333; }
+        .search-results { overflow-y: auto; padding: 5px; flex:1; }
+        .search-item { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+        .search-item:hover { background: #f8f9fa; }
+        .search-tag { background: #e9ecef; color: #333; border: 1px solid #ced4da; font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor:pointer; }
+        .search-tag:hover { background: #007bff; color: white; border-color: #007bff; }
+
+        /* Modal */
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:3000; backdrop-filter: blur(2px); }
+        .modal-card { background:white; width:500px; padding:25px; border-radius:12px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .modal-label { font-size:0.85em; color:#666; font-weight:bold; display:block; margin-bottom:4px; }
+        .form-row { display:flex; gap:15px; margin-bottom:5px; }
+        .form-group { flex:1; }
+        input, select, textarea { width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; font-size:0.95em; }
+        textarea { resize: vertical; min-height:80px; }
+
+        /* Loader */
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 4000; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom:15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 模式切換 */
+        body.mode-read .toolbar { display: none; }
+        body.mode-read .reader-toolbar { display: flex; }
+    </style>
+</head>
+<body>
+
+    <div id="loader"><div class="spinner"></div><h3 id="loaderText">系統處理中...</h3></div>
+
+    <div class="toolbar" id="editToolbar">
+        <h1>🗺️ PDF/Html閱讀地圖</h1>
+        
+        <button onclick="document.getElementById('pdfInput').click()">📂 匯入 PDF</button>
+        <input type="file" id="pdfInput" accept="application/pdf" style="display:none" onchange="handlePdfUpload(this)">
+        
+        <button onclick="document.getElementById('projectInput').click()">📥 載入專案</button>
+        <input type="file" id="projectInput" accept=".json" style="display:none" onchange="handleProjectLoad(this)">
+        
+        <div style="width:1px; height:20px; background:#555; margin:0 5px;"></div>
+        
+        <button class="primary" onclick="saveProject()">💾 存檔 (JSON)</button>
+        <button class="export" onclick="exportReaderHtml()">📦 匯出閱讀版 HTML</button>
+        <button class="danger" onclick="exportExcel()">📊 匯出 RTM 報表</button>
+
+        <div class="search-box">
+            <input type="text" id="globalSearchInput" class="search-input" placeholder="全域關鍵字..." onkeydown="if(event.key==='Enter') performGlobalSearch()">
+            <button class="search-btn" onclick="performGlobalSearch()">🔍</button>
+        </div>
+    </div>
+
+    <div class="reader-toolbar" id="readToolbar">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <h1 style="color:#28a745;">📖 PDF/Html 成果閱讀器</h1>
+            <span style="font-size:0.9em; color:#bbb;" id="readerFileName">尚未載入文件...</span>
+        </div>
+        <div>
+            <button class="primary" onclick="document.getElementById('readerPdfInput').click()">📂 請先開啟原始 PDF 檔</button>
+            <input type="file" id="readerPdfInput" accept="application/pdf" style="display:none" onchange="handlePdfUpload(this)">
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div id="viewerContainer">
+            <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
+                <h3>歡迎使用閱讀地圖</h3>
+                <p>請從左上角匯入 PDF 文件開始分析。<br>支援分批載入，大型文件也不卡頓。</p>
+            </div>
+            
+            <div class="pagination-bar" id="paginationBar" style="display:none;">
+                <button onclick="prevBatch()">⬅ 上一批</button>
+                <span style="font-family:monospace; margin:0 15px; font-size:1.1em;" id="batchInfo">Page 1 - 10</span>
+                <button onclick="nextBatch()">下一批 ➡</button>
+                <select id="batchSizeSelect" onchange="changeBatchSize()" style="margin-left:10px; width:auto; padding:4px; font-size:0.8em; color:#333;">
+                    <option value="5">5 頁/批</option>
+                    <option value="10" selected>10 頁/批</option>
+                    <option value="20">20 頁/批</option>
+                    <option value="50">50 頁 (需高效能)</option>
+                </select>
+            </div>
+
+            <div id="searchPanel">
+                <div class="search-header">
+                    <span>⚡ 速查速標 (Quick Mark)</span>
+                    <span style="cursor:pointer; font-size:1.2em;" onclick="closeSearch()">×</span>
+                </div>
+                <div style="padding:10px; background:#f8f9fa; border-bottom:1px solid #eee; display:flex; gap:5px; flex-wrap:wrap;">
+                    <button class="search-tag" onclick="searchKeyword('交付')">交付</button>
+                    <button class="search-tag" onclick="searchKeyword('驗收')">驗收</button>
+                    <button class="search-tag" onclick="searchKeyword('罰則')">罰則</button>
+                    <button class="search-tag" onclick="searchKeyword('資安')">資安</button>
+                    <button class="search-tag" onclick="searchKeyword('保固')">保固</button>
+                </div>
+                <div class="search-results" id="searchResultsList"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span style="font-weight:bold;">需求索引 (<span id="count">0</span>)</span>
+                <button style="font-size:0.7em; padding:2px 8px; background:#6c757d;" onclick="clearAutoSave()">♻️ 清除快取</button>
+            </div>
+            <div class="sidebar-list" id="sidebarList"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="editorModal">
+        <div class="modal-card">
+            <h3 id="modalTitle" style="margin:0; padding-bottom:10px; border-bottom:1px solid #eee;">🖍️ 編輯需求</h3>
+            
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label class="modal-label">RTM ID (編號)</label>
+                    <input type="text" id="rtmId" placeholder="例: REQ-001">
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label class="modal-label">分類標籤 (Tag)</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="codeName" placeholder="例: 功能需求" style="flex:1;">
+                        <input type="color" id="codeColor" value="#ffeb3b" style="width:40px; padding:0; height:36px; border:none; background:none;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="modal-label">優先級 (Priority)</label>
+                    <select id="rtmPriority">
+                        <option value="High">🔴 High (高)</option>
+                        <option value="Medium" selected>🟡 Medium (中)</option>
+                        <option value="Low">🟢 Low (低)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">狀態 (Status)</label>
+                    <select id="rtmStatus">
+                        <option value="New">New (新增)</option>
+                        <option value="Pending">Pending (待議)</option>
+                        <option value="Closed">Closed (已結案)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="modal-label">原文摘要</label>
+                <div id="quoteText" style="font-size:0.85em; color:#555; background:#f5f5f5; padding:8px; border-radius:4px; max-height:60px; overflow-y:auto; margin-bottom:10px; font-style:italic;"></div>
+                
+                <label class="modal-label">分析筆記 / 驗收標準</label>
+                <textarea id="codeMemo" placeholder="輸入分析說明..."></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; padding-top:15px; border-top:1px solid #eee;">
+                <button class="danger btn-delete" onclick="deleteAnnotation()">刪除</button>
+                <button style="background:#6c757d;" onclick="closeModal()">關閉</button>
+                <button class="primary btn-save" onclick="confirmAnnotation()">確定儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <script id="embedded-data" type="application/json"></script>
+
+    <script>
+        // --- 1. 全域變數設定 ---
+        let pdfDoc = null; 
+        let annotations = []; 
+        let currentSelection = null;
+        let BATCH_SIZE = 10; 
+        let currentBatchIndex = 0; 
+        let totalBatches = 0;
+        let isReaderMode = false;
+        const AUTOSAVE_KEY = 'pdf_map_autosave_v1';
+
+        // --- 2. 初始化 ---
+        window.onload = function() {
+            // 檢查是否為閱讀版 (有無內嵌數據)
+            checkEmbeddedData();
+            // 如果是編輯模式，檢查是否有未存檔的快取
+            if(!isReaderMode) checkAutoSave();
+        };
+
+        function checkEmbeddedData() {
+            const script = document.getElementById('embedded-data');
+            if (script && script.textContent.trim()) {
+                try {
+                    const data = JSON.parse(script.textContent);
+                    annotations = data.annotations || [];
+                    isReaderMode = true; 
+                    document.body.classList.add('mode-read');
+                    renderSidebar();
+                    alert("歡迎使用閱讀地圖！\n這是一個唯讀版本，請點擊上方按鈕載入對應的 PDF 檔。");
+                } catch(e) { console.error("Embedded data error", e); }
+            }
+        }
+
+        // --- 3. 自動存檔系統 ---
+        function saveToLocal() {
+            if(isReaderMode) return;
+            const data = { annotations: annotations, timestamp: Date.now() };
+            localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+        }
+
+        function checkAutoSave() {
+            const saved = localStorage.getItem(AUTOSAVE_KEY);
+            if(saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    // 如果有資料且時間在 24 小時內
+                    if(data.annotations.length > 0 && (Date.now() - data.timestamp < 86400000)) {
+                        if(confirm(`發現未儲存的草稿 (${new Date(data.timestamp).toLocaleString()})，共 ${data.annotations.length} 筆標註，是否還原？`)) {
+                            annotations = data.annotations;
+                            renderSidebar();
+                            alert("草稿已還原，請記得匯入 PDF。");
+                        }
+                    }
+                } catch(e) {}
+            }
+        }
+
+        function clearAutoSave() {
+            if(confirm("確定清除瀏覽器快取？這不會刪除已存檔的 JSON。")) {
+                localStorage.removeItem(AUTOSAVE_KEY);
+                alert("快取已清除。");
+            }
+        }
+
+        // --- 4. PDF 載入與分批核心 ---
+        async function handlePdfUpload(input) {
+            const file = input.files[0];
+            if(!file) return;
+            
+            showLoader("正在解析 PDF...");
+            if(isReaderMode) document.getElementById('readerFileName').innerText = file.name;
+            
+            // 編輯模式換 PDF = 重來 (閱讀模式則保留數據)
+            if (!isReaderMode && annotations.length === 0) {
+                 // 保持 annotations 空的
+            }
+
+            try {
+                const buffer = await file.arrayBuffer();
+                pdfDoc = await pdfjsLib.getDocument(buffer).promise;
+                
+                // 重置分批狀態
+                currentBatchIndex = 0;
+                calculateBatches();
+                
+                document.getElementById('placeholder').style.display = 'none';
+                document.getElementById('paginationBar').style.display = 'flex';
+                
+                await renderCurrentBatch();
+            } catch(e) {
+                console.error(e);
+                alert("PDF 讀取失敗，請確認檔案未損壞且非加密文件。");
+            } finally {
+                hideLoader();
+                input.value = '';
+            }
+        }
+
+        function calculateBatches() {
+            totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE);
+            updatePaginationUI();
+        }
+
+        function changeBatchSize() {
+            BATCH_SIZE = parseInt(document.getElementById('batchSizeSelect').value);
+            if(pdfDoc) {
+                currentBatchIndex = 0;
+                calculateBatches();
+                renderCurrentBatch();
+            }
+        }
+
+        async function renderCurrentBatch() {
+            if(!pdfDoc) return;
+            showLoader(`正在渲染第 ${currentBatchIndex+1} / ${totalBatches} 批頁面...`);
+            
+            // 清空舊頁面 (釋放記憶體)
+            document.querySelectorAll('.pdf-page').forEach(p => p.remove());
+
+            const start = (currentBatchIndex * BATCH_SIZE) + 1;
+            const end = Math.min(start + BATCH_SIZE - 1, pdfDoc.numPages);
+            updatePaginationUI(start, end);
+
+            for(let i = start; i <= end; i++) {
+                await renderPage(i);
+            }
+            
+            hideLoader();
+            document.getElementById('viewerContainer').scrollTop = 0;
+        }
+
+        function prevBatch() { if(currentBatchIndex > 0) { currentBatchIndex--; renderCurrentBatch(); } }
+        function nextBatch() { if(currentBatchIndex < totalBatches - 1) { currentBatchIndex++; renderCurrentBatch(); } }
+        function updatePaginationUI(s, e) {
+            const info = document.getElementById('batchInfo');
+            if(s && e) info.innerText = `Page ${s} - ${e} / ${pdfDoc.numPages}`;
+        }
+
+        async function renderPage(num) {
+            const page = await pdfDoc.getPage(num);
+            const scale = 1.5; // 清晰度
+            const viewport = page.getViewport({ scale: scale });
+            
+            const div = document.createElement('div'); 
+            div.className='pdf-page'; 
+            div.style.width=`${viewport.width}px`; 
+            div.style.height=`${viewport.height}px`; 
+            div.dataset.pageNumber=num;
+            
+            const cvs = document.createElement('canvas'); 
+            const ctx = cvs.getContext('2d');
+            cvs.width=viewport.width; cvs.height=viewport.height;
+            
+            const textLayer = document.createElement('div'); 
+            textLayer.className='textLayer';
+            textLayer.style.width=`${viewport.width}px`; 
+            textLayer.style.height=`${viewport.height}px`;
+
+            div.appendChild(cvs); 
+            div.appendChild(textLayer);
+            document.getElementById('viewerContainer').insertBefore(div, document.getElementById('paginationBar'));
+            
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            
+            const content = await page.getTextContent();
+            pdfjsLib.renderTextLayer({ 
+                textContent: content, 
+                container: textLayer, 
+                viewport: viewport, 
+                textDivs: [] 
+            });
+            
+            // 綁定選取事件
+            if(!isReaderMode) {
+                textLayer.addEventListener('mouseup', (e) => handleSelection(e, num));
+            }
+
+            // 恢復既有標註的高亮
+            restoreHighlights(num, textLayer);
+        }
+
+        // --- 5. 標註與高亮邏輯 ---
+        function restoreHighlights(pageNum, layer) {
+            const pageAnns = annotations.filter(a => a.page === pageNum);
+            if(pageAnns.length === 0) return;
+            
+            const spans = layer.children;
+            if(spans.length === 0) return;
+
+            pageAnns.forEach(ann => {
+                // 簡易文字比對高亮
+                for(let s of spans) {
+                    if(s.textContent.includes(ann.text) || ann.text.includes(s.textContent)) {
+                        s.style.backgroundColor = ann.color + '66'; // 加透明度
+                        s.style.borderBottom = `2px solid ${ann.color}`;
+                    }
+                }
+            });
+        }
+
+        function handleSelection(e, page) {
+            if (isReaderMode) return;
+            const sel = window.getSelection(); 
+            if(sel.isCollapsed) return;
+            const text = sel.toString(); 
+            if(!text.trim()) return;
+            
+            currentSelection = { range: sel.getRangeAt(0), text: text, page: page, id: null };
+            openModal(text);
+        }
+
+        // --- 6. 編輯視窗邏輯 ---
+        function openModal(text, existing=null) {
+            const m = document.getElementById('editorModal');
+            
+            // 填值
+            document.getElementById('rtmId').value = existing ? (existing.rtmId || '') : '';
+            document.getElementById('codeName').value = existing ? existing.code : '';
+            document.getElementById('codeColor').value = existing ? existing.color : '#ffeb3b';
+            document.getElementById('rtmPriority').value = existing ? (existing.priority || 'Medium') : 'Medium';
+            document.getElementById('rtmStatus').value = existing ? (existing.status || 'New') : 'New';
+            document.getElementById('codeMemo').value = existing ? existing.memo : '';
+            document.getElementById('quoteText').innerText = existing ? existing.text : text;
+
+            // 標題與權限
+            document.getElementById('modalTitle').innerText = isReaderMode ? "👁️ 需求詳情" : (existing ? "✏️ 編輯需求" : "🖍️ 新增需求");
+            const inputs = m.querySelectorAll('input, select, textarea');
+            inputs.forEach(el => el.disabled = isReaderMode);
+            m.querySelector('.btn-save').style.display = isReaderMode ? 'none' : 'block';
+            m.querySelector('.btn-delete').style.display = isReaderMode ? 'none' : 'block';
+
+            if(existing) currentSelection = { id: existing.id };
+            m.style.display = 'flex';
+        }
+
+        function closeModal() { 
+            document.getElementById('editorModal').style.display = 'none'; 
+            window.getSelection().removeAllRanges(); 
+        }
+
+        function confirmAnnotation() {
+            if(isReaderMode) return closeModal();
+            
+            const newData = {
+                page: currentSelection.page,
+                text: currentSelection.text || document.getElementById('quoteText').innerText,
+                rtmId: document.getElementById('rtmId').value.trim(),
+                code: document.getElementById('codeName').value,
+                color: document.getElementById('codeColor').value,
+                priority: document.getElementById('rtmPriority').value,
+                status: document.getElementById('rtmStatus').value,
+                memo: document.getElementById('codeMemo').value,
+                timestamp: new Date().toISOString()
+            };
+
+            if(currentSelection.id) {
+                const idx = annotations.findIndex(x => x.id === currentSelection.id);
+                if(idx !== -1) annotations[idx] = { ...annotations[idx], ...newData };
+            } else {
+                annotations.push({ id: Date.now().toString(), ...newData });
+            }
+
+            renderSidebar(); 
+            saveToLocal(); 
+            closeModal();
+
+            // 嘗試更新當前頁面高亮
+            const pageDiv = document.querySelector(`.pdf-page[data-page-number="${currentSelection.page}"] .textLayer`);
+            if(pageDiv) restoreHighlights(currentSelection.page, pageDiv);
+        }
+
+        function deleteAnnotation() {
+            if(isReaderMode || !currentSelection.id) return;
+            if(confirm("確定刪除此需求標註？")) {
+                annotations = annotations.filter(a => a.id !== currentSelection.id);
+                renderSidebar(); 
+                saveToLocal(); 
+                closeModal();
+                // 這裡不自動刷新頁面(太耗效能)，建議手動換頁或忽略
+            }
+        }
+
+        // --- 7. 全域搜尋與速查速標 ---
+        function searchKeyword(k) {
+            document.getElementById('globalSearchInput').value = k;
+            performGlobalSearch();
+        }
+
+        async function performGlobalSearch() {
+            if(!pdfDoc) return;
+            const query = document.getElementById('globalSearchInput').value.trim();
+            if(!query) return;
+
+            const list = document.getElementById('searchResultsList');
+            document.getElementById('searchPanel').style.display = 'flex';
+            list.innerHTML = '<div style="text-align:center; padding:20px;">正在全文件掃描中...<br>(頁數多時請稍候)</div>';
+            
+            let results = [];
+            
+            // 掃描全文件文字
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const content = await page.getTextContent();
+                const text = content.items.map(item => item.str).join('');
+                
+                if (text.toLowerCase().includes(query.toLowerCase())) {
+                    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+                    const snippet = text.substring(Math.max(0, idx - 15), Math.min(text.length, idx + 25));
+                    results.push({ page: i, snippet: snippet });
+                }
+            }
+
+            list.innerHTML = '';
+            if(results.length === 0) { list.innerHTML = '<div style="padding:10px; text-align:center; color:#888;">查無結果</div>'; return; }
+
+            results.forEach(res => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                
+                // 左邊：跳轉文字
+                const info = document.createElement('div');
+                info.style.flex = "1";
+                info.style.cursor = "pointer";
+                info.innerHTML = `<b style="color:#007bff;">P.${res.page}</b> <span style="color:#555;">...${res.snippet}...</span>`;
+                info.onclick = () => jumpToPage(res.page);
+
+                // 右邊：一鍵標記按鈕
+                const btn = document.createElement('button');
+                btn.className = "danger";
+                btn.style.padding = "2px 6px";
+                btn.style.fontSize = "0.75em";
+                btn.innerHTML = "📌 標記";
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    quickMark(res.page, res.snippet);
+                    btn.innerHTML = "✔";
+                    btn.className = "primary";
+                    btn.disabled = true;
+                };
+
+                div.appendChild(info);
+                div.appendChild(btn);
+                list.appendChild(div);
+            });
+        }
+
+        function closeSearch() { document.getElementById('searchPanel').style.display = 'none'; }
+
+        function quickMark(pageNum, text) {
+            const newId = Date.now().toString() + Math.floor(Math.random()*1000);
+            annotations.push({
+                id: newId,
+                page: pageNum,
+                text: text,
+                rtmId: '-',
+                code: '重點章節',
+                color: '#aaaaaa',
+                priority: 'High',
+                status: 'New',
+                memo: '快速搜尋索引',
+                timestamp: new Date().toISOString()
+            });
+            renderSidebar();
+            saveToLocal();
+        }
+
+        function jumpToPage(p) {
+            const targetBatch = Math.floor((p - 1) / BATCH_SIZE);
+            if(targetBatch !== currentBatchIndex) {
+                currentBatchIndex = targetBatch;
+                renderCurrentBatch().then(() => setTimeout(() => {
+                    const el = document.querySelector(`.pdf-page[data-page-number="${p}"]`);
+                    if(el) el.scrollIntoView({behavior:'smooth'});
+                }, 500));
+            } else {
+                const el = document.querySelector(`.pdf-page[data-page-number="${p}"]`);
+                if(el) el.scrollIntoView({behavior:'smooth'});
+            }
+        }
+
+        // --- 8. 側邊欄渲染 ---
+        function renderSidebar() {
+            const list = document.getElementById('sidebarList');
+            document.getElementById('count').innerText = annotations.length;
+            list.innerHTML = '';
+
+            // 排序：頁碼 -> RTM ID
+            annotations.sort((a,b) => a.page - b.page);
+
+            annotations.forEach(a => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.style.borderLeftColor = a.color;
+                
+                // 優先級顏色
+                let pColor = '#ccc';
+                if(a.priority === 'High') pColor = '#dc3545';
+                if(a.priority === 'Low') pColor = '#28a745';
+
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <div>
+                            <span style="font-weight:bold; color:#007bff; font-size:0.9em;">P.${a.page}</span>
+                            ${a.rtmId && a.rtmId!=='-' ? `<span style="font-size:0.8em; background:#eee; padding:1px 4px; border-radius:3px;">${a.rtmId}</span>` : ''}
+                        </div>
+                        <div style="font-size:0.8em; color:#666;">
+                            <span class="priority-dot" style="background:${pColor}"></span>${a.priority}
+                        </div>
+                    </div>
+                    <div style="margin-bottom:5px;">
+                        <span class="rtm-tag" style="background:${a.color}33; color:#333;">${a.code}</span>
+                    </div>
+                    <div style="font-size:0.85em; color:#444; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        "${a.text.substring(0, 30)}..."
+                    </div>
+                `;
+                
+                div.onclick = () => {
+                    if(isReaderMode) openModal(null, a);
+                    else jumpToPage(a.page);
+                };
+                list.appendChild(div);
+            });
+        }
+
+        // --- 9. 匯出功能 ---
+        function saveProject() {
+            const data = { version: "final-v1", annotations: annotations };
+            download(JSON.stringify(data), `RTM_Project_${getDateStr()}.json`, 'application/json');
+        }
+
+        async function exportExcel() {
+            if(annotations.length === 0) return alert("無資料");
+            
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet('需求追蹤表 (RTM)');
+            
+            ws.columns = [
+                { header: 'ID', key: 'id', width: 6 },
+                { header: 'RTM 編號', key: 'rtmId', width: 15 },
+                { header: '頁碼', key: 'page', width: 8 },
+                { header: '標籤', key: 'code', width: 20 },
+                { header: '優先級', key: 'priority', width: 12 },
+                { header: '狀態', key: 'status', width: 12 },
+                { header: '原文 (Segment)', key: 'text', width: 50 },
+                { header: '筆記 (Memo)', key: 'memo', width: 40 }
+            ];
+
+            // Header Style
+            ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF444444' } };
+
+            annotations.forEach((a, i) => {
+                const row = ws.addRow({
+                    id: i+1, rtmId: a.rtmId, page: a.page, code: a.code,
+                    priority: a.priority, status: a.status, text: a.text, memo: a.memo
+                });
+                // Color Code Cell
+                const cleanColor = a.color.replace('#','');
+                row.getCell('code').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF'+cleanColor } };
+            });
+
+            const buf = await wb.xlsx.writeBuffer();
+            download(buf, `RTM_Report_${getDateStr()}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        }
+
+        function exportReaderHtml() {
+            if(annotations.length === 0) return alert("無資料，無法打包。");
+            let html = document.documentElement.outerHTML;
+            
+            // 注入數據
+            const data = JSON.stringify({ version: "reader-v1", annotations: annotations });
+            const scriptTag = `<script id="embedded-data" type="application/json">${data}<\/script>`;
+            
+            // 替換原本的空 script
+            html = html.replace('<script id="embedded-data" type="application/json"><\/script>', scriptTag);
+            
+            download(html, `PDF_Reader_Report_${getDateStr()}.html`, 'text/html');
+        }
+
+        function download(content, name, type) {
+            const blob = new Blob([content], { type: type });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+        }
+
+        function handleProjectLoad(input) {
+            const f = input.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = e => {
+                try {
+                    const d = JSON.parse(e.target.result);
+                    annotations = d.annotations || [];
+                    renderSidebar(); saveToLocal();
+                    alert("專案載入成功！請匯入 PDF。");
+                } catch(err) { alert("檔案格式錯誤"); }
+            };
+            r.readAsText(f); input.value = '';
+        }
+
+        function showLoader(txt) { document.getElementById('loader').style.display = 'flex'; document.getElementById('loaderText').innerText = txt; }
+        function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+        function getDateStr() { return new Date().toISOString().slice(0,10); }
+
+    </script>
+</body>
+</html>
