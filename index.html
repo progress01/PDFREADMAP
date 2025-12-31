@@ -3,34 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Pro Max)</title>
+    <title>PDF 閱讀地圖 (Ultimate V5)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
     <style>
-        /* --- 1. 核心與佈局 --- */
+        /* --- 1. 全域樣式設定 --- */
         body { margin: 0; padding: 0; background: #333; font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* 編輯模式工具列 */
+        /* --- 2. 頂部工具列 (Toolbar) --- */
         .toolbar { background: #222; color: white; padding: 10px 20px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 100; flex-shrink: 0; flex-wrap: wrap; }
-        
-        /* 閱讀模式工具列 */
         .reader-toolbar { background: #202b38; color: white; padding: 15px 20px; display: none; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 101; flex-shrink: 0; }
-
         h1 { margin: 0; font-size: 1.1em; color: #fff; margin-right: 10px; display:flex; align-items:center; gap:5px; user-select: none; }
         
+        /* 按鈕樣式 */
         button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; background: #444; color: white; transition: 0.2s; white-space: nowrap; font-size: 0.9em; display: inline-flex; align-items: center; gap: 4px; }
         button:hover { background: #666; transform: translateY(-1px); }
-        button:active { transform: translateY(1px); }
         button.primary { background: #28a745; }
         button.primary:hover { background: #218838; }
         button.export { background: #17a2b8; }
         button.danger { background: #dc3545; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         
-        /* 模式切換開關 */
+        /* 模式切換按鈕 (文字/圖表) */
         .mode-switch { display: flex; background: #444; border-radius: 20px; padding: 2px; border: 1px solid #555; margin-right: 10px; }
         .mode-btn { padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 0.85em; color: #ccc; transition: 0.2s; user-select: none; }
         .mode-btn.active { background: #007bff; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
@@ -41,14 +37,9 @@
         .search-btn { background: #ffc107; color: #333; border-radius: 0; padding: 6px 10px; }
         .search-btn:hover { background: #e0a800; }
 
-        /* --- 2. 工作區與 PDF --- */
+        /* --- 3. PDF 工作區與 Canvas --- */
         .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
-        #viewerContainer { 
-            flex: 1; overflow-y: auto; position: relative; 
-            display: flex; flex-direction: column; align-items: center; 
-            padding: 20px; padding-bottom: 120px; 
-            background: #525659; user-select: none; /* 禁止原生選取以配合框選 */
-        }
+        #viewerContainer { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; align-items: center; padding: 20px; padding-bottom: 120px; background: #525659; user-select: none; }
         
         .pdf-page { position: relative; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); background: white; cursor: crosshair; }
         .selection-marquee { position: absolute; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); pointer-events: none; z-index: 100; }
@@ -56,63 +47,68 @@
         .textLayer span { color: transparent; position: absolute; white-space: pre; cursor: crosshair; }
         
         /* 高亮樣式 */
-        .highlight-text { background-color: rgba(255, 235, 59, 0.5); border-bottom: 2px solid #e6a800; cursor: pointer; }
+        .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
         .highlight-area { position: absolute; border: 3px solid #dc3545; background-color: rgba(220, 53, 69, 0.1); cursor: pointer; z-index: 50; transition: 0.2s; }
         .highlight-area:hover { background-color: rgba(220, 53, 69, 0.3); }
+        .highlight-flash { animation: flash 1s ease-in-out; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; background-color: red; } }
         
-        /* 閃爍動畫 (用於跳轉定位) */
-        .highlight-flash { animation: flash-animation 1.5s ease-in-out 3; z-index: 200 !important; box-shadow: 0 0 15px rgba(255,0,0,0.8); }
-        @keyframes flash-animation { 0%, 100% { opacity: 1; border-color: inherit; } 50% { opacity: 0.2; border-color: red; background-color: rgba(255,0,0,0.5); } }
-
-        /* --- 3. 懸浮導覽列 (Floating Pill) --- */
-        .floating-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; display: flex; gap: 15px; align-items: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; }
-        .page-info { font-family: monospace; font-size: 1.1em; letter-spacing: 1px; }
-
-        /* --- 4. 側邊欄 --- */
+        /* --- 4. 側邊欄 (Sidebar) --- */
         .sidebar { width: 320px; background: #f8f9fa; border-left: 1px solid #ccc; display: flex; flex-direction: column; z-index: 90; }
         .sidebar-header { padding: 12px; background: white; border-bottom: 1px solid #ddd; display:flex; justify-content:space-between; align-items:center;}
         .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
         
-        .list-item { background: white; padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; border-left: 5px solid #ccc; transition:0.2s; position: relative;}
-        .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-color: #aaa; }
-        .priority-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        
-        /* --- 5. 搜尋與速查速標面板 --- */
-        #searchPanel { 
-            position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; 
-            background: white; border: 1px solid #ccc; border-radius: 8px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; 
-        }
-        .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color:#333; align-items: center; }
+        /* 列表單項樣式 (含按鈕群組) */
+        .list-item { background: white; padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; border-left: 5px solid #ccc; transition:0.2s; position: relative; padding-right: 50px; }
+        .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fafafa; }
+        .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
+        .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
+        .icon-btn:hover { background: #eee; color: #000; }
+        .btn-edit:hover { color: #007bff; background: #e7f1ff; }
+        .btn-del:hover { color: #dc3545; background: #ffeeee; }
+
+        /* --- 5. 搜尋結果面板 --- */
+        #searchPanel { position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; }
+        .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color:#333; }
         .search-results { overflow-y: auto; padding: 5px; flex:1; }
         .search-item { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; display:flex; gap:10px; align-items:center; justify-content:space-between; }
         .search-item:hover { background: #f8f9fa; }
         .search-tag { background: #e9ecef; color: #333; border: 1px solid #ced4da; font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor:pointer; }
         .search-tag:hover { background: #007bff; color: white; border-color: #007bff; }
 
-        /* --- 6. Modal 與設定 --- */
-        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:3000; }
-        .modal-card { background:white; width:500px; padding:25px; border-radius:12px; display:flex; flex-direction:column; gap:12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height:90vh; overflow-y:auto; animation: modalIn 0.2s ease-out; }
-        @keyframes modalIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        input, textarea, select { width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-family: inherit; }
-        input:focus, textarea:focus, select:focus { border-color: #007bff; outline: none; box-shadow: 0 0 0 2px rgba(0,123,255,0.2); }
+        /* --- 6. 底部導覽列 --- */
+        .floating-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; display: flex; gap: 15px; align-items: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; }
         
-        .tag-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-        .tag-chip { padding: 4px 10px; border-radius: 15px; font-size: 0.85em; cursor: pointer; border: 1px solid #ddd; display:flex; align-items:center; gap:5px; background: #f0f0f0; transition:0.2s;}
-        .tag-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); background: #e2e6ea;}
-        .tag-dot { width: 10px; height: 10px; border-radius: 50%; }
-
-        /* Loader */
+        /* --- 7. Modal 視窗 (編輯與設定) --- */
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; z-index:3000; justify-content: flex-end; align-items: center; }
+        .modal-card { background:white; width:450px; padding:20px; border-radius:12px 0 0 12px; display:flex; flex-direction:column; gap:12px; box-shadow: -5px 0 30px rgba(0,0,0,0.3); height: 95vh; margin-right: 0; overflow-y: auto; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        
+        input, select { width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-family: inherit; }
+        
+        /* 圖片預覽與筆記區 */
+        .preview-box { background:#f0f0f0; padding:10px; font-size:0.9em; max-height:150px; overflow-y:auto; border-radius:4px; margin-bottom:10px; display:flex; justify-content:center; align-items:center; }
+        .preview-box img { max-width: 100%; max-height: 130px; border: 1px solid #ccc; }
+        .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; }
+        .memo-btn { font-size: 0.8em; padding: 3px 8px; background: white; color: #333; border: 1px solid #ccc; }
+        .rich-memo { width: 100%; min-height: 100px; max-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: white; line-height: 1.5; font-size: 0.95em; }
+        .rich-memo:focus { outline: 2px solid #007bff; border-color: transparent; }
+        
+        /* 自訂欄位容器 */
+        .custom-fields-area { border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 5px; }
+        
+        /* 設定視窗置中 */
+        #settingsModal { justify-content: center; }
+        #settingsModal .modal-card { width: 600px; border-radius: 12px; height: auto; max-height: 85vh; margin-right: 0; }
+        
+        /* 讀取動畫 */
         #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 4000; }
         .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom:15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+        /* 閱讀模式隱藏工具列 */
         body.mode-read .toolbar { display: none; }
         body.mode-read .reader-toolbar { display: flex; }
-
-        /* Helper */
-        .shortcut-hint { font-size: 0.75em; color: #888; margin-left: auto; }
     </style>
 </head>
 <body>
@@ -120,14 +116,14 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ 閱讀地圖 <span style="font-size:0.5em; opacity:0.6;">Pro</span></h1>
+        <h1>🛠️ 閱讀地圖 <span style="font-size:0.5em; opacity:0.6;">Ultimate V5</span></h1>
         
         <div class="mode-switch">
             <div class="mode-btn active" id="modeText" onclick="setMode('text')">📝 抓文字</div>
             <div class="mode-btn" id="modeArea" onclick="setMode('area')">🖼️ 框圖表</div>
         </div>
 
-        <button onclick="openSettings()">⚙️ 設定</button>
+        <button onclick="openSettings()">⚙️ 設定 (自訂欄位)</button>
 
         <button onclick="document.getElementById('pdfInput').click()">📂 PDF</button>
         <input type="file" id="pdfInput" accept="application/pdf" style="display:none" onchange="handlePdfUpload(this)">
@@ -160,14 +156,12 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>使用左上角開關切換「抓文字」或「框圖表」模式</p>
-                <p style="font-size:0.8em; margin-top:10px;">快速鍵：ESC 關閉視窗 | Ctrl+Enter 儲存</p>
+                <p>功能升級：支援文字與圖片擷取、右側編輯、Excel 自訂欄位</p>
             </div>
-            
+
             <div id="searchPanel">
                 <div class="search-header">
-                    <span id="searchTitle">⚡ 速查 (Quick Search)</span>
-                    <button id="stopSearchBtn" class="danger" style="display:none; padding:2px 8px; font-size:0.75em;" onclick="stopSearching=true">⏹ 停止</button>
+                    <span>⚡ 速查速標 (Quick Mark)</span>
                     <span style="cursor:pointer; font-size:1.2em;" onclick="closeSearch()">×</span>
                 </div>
                 <div style="padding:10px; background:#f8f9fa; border-bottom:1px solid #eee; display:flex; gap:5px; flex-wrap:wrap;">
@@ -175,6 +169,7 @@
                     <button class="search-tag" onclick="searchKeyword('驗收')">驗收</button>
                     <button class="search-tag" onclick="searchKeyword('罰則')">罰則</button>
                     <button class="search-tag" onclick="searchKeyword('資安')">資安</button>
+                    <button class="search-tag" onclick="searchKeyword('保固')">保固</button>
                 </div>
                 <div class="search-results" id="searchResultsList"></div>
             </div>
@@ -183,7 +178,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <span style="font-weight:bold;">索引列表 (<span id="count">0</span>)</span>
-                <button style="font-size:0.75em; padding:2px 6px; background:#6c757d;" onclick="clearAutoSave()">清除</button>
+                <button style="font-size:0.75em; padding:2px 6px; background:#6c757d;" onclick="clearAutoSave()">全部清除</button>
             </div>
             <div class="sidebar-list" id="sidebarList"></div>
         </div>
@@ -191,28 +186,25 @@
 
     <div class="floating-nav" id="bottomNav" style="display:none;">
         <button id="btnPrev" onclick="prevBatch()" style="border-radius:20px; padding:6px 15px;">⬅</button>
-        <span class="page-info" id="batchInfo">Page 1 - 10</span>
+        <select id="jumpSelect" onchange="jumpToBatch(this.value)" style="width:auto; padding:4px; background:#333; color:white; border:none; margin:0 5px;">
+            <option value="0">Page 1 - ...</option>
+        </select>
         <button id="btnNext" onclick="nextBatch()" style="border-radius:20px; padding:6px 15px;" class="primary">➡</button>
         <div style="width:1px; height:15px; background:#666; margin:0 5px;"></div>
         <select id="batchSizeSelect" onchange="changeBatchSize()" style="width:auto; padding:4px; font-size:0.85em; background:#333; color:white; border:none;">
             <option value="5">5 頁</option>
             <option value="10" selected>10 頁</option>
             <option value="20">20 頁</option>
-            <option value="50">50 頁 (高效能)</option>
+            <option value="50">50 頁</option>
         </select>
     </div>
 
     <div class="modal" id="editorModal">
         <div class="modal-card">
-            <h3 id="modalTitle" style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px; display:flex; justify-content:space-between;">
-                <span>🖍️ 標註內容</span>
-                <span class="shortcut-hint">Ctrl+Enter 存檔</span>
-            </h3>
+            <h3 id="modalTitle" style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">🖍️ 編輯標註</h3>
             
-            <div id="textInputGroup">
-                <label style="font-size:0.8em; color:#666;">內容預覽</label>
-                <div id="quoteText" style="background:#f0f0f0; padding:10px; font-size:0.9em; max-height:60px; overflow-y:auto; border-radius:4px; margin-bottom:10px;"></div>
-            </div>
+            <label style="font-size:0.8em; color:#666; margin-top:10px;">內容預覽 / 圖片</label>
+            <div id="quotePreview" class="preview-box"></div>
 
             <div style="display:flex; gap:10px;">
                 <div style="flex:1">
@@ -227,8 +219,10 @@
                     </div>
                 </div>
             </div>
-
-            <div id="quickTagArea" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:-5px; margin-bottom:5px;"></div>
+            
+            <div id="quickTagArea" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
+            
+            <div id="customFieldsContainer" class="custom-fields-area" style="display:none;"></div>
 
             <div style="display:flex; gap:10px;">
                 <div style="flex:1">
@@ -251,11 +245,15 @@
 
             <div>
                 <label>筆記 (Memo)</label>
-                <textarea id="codeMemo" rows="3" placeholder="分析說明..."></textarea>
+                <div class="memo-toolbar">
+                    <button class="memo-btn" onclick="memoExec('hilite')">🖊️ 螢光筆</button>
+                    <button class="memo-btn" onclick="memoExec('checkbox')">☑️ 待辦</button>
+                    <button class="memo-btn" onclick="memoExec('clear')">🧹 清格式</button>
+                </div>
+                <div id="codeMemo" class="rich-memo" contenteditable="true"></div>
             </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px; border-top:1px solid #eee; padding-top:15px;">
-                <button class="danger btn-delete" onclick="deleteAnnotation()">刪除</button>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:auto; border-top:1px solid #eee; padding-top:15px;">
                 <button onclick="closeModal()">取消 (Esc)</button>
                 <button class="primary btn-save" onclick="confirmAnnotation()">確定 (Enter)</button>
             </div>
@@ -264,14 +262,25 @@
 
     <div class="modal" id="settingsModal">
         <div class="modal-card">
-            <h3 style="margin:0;">⚙️ 設定常用標籤</h3>
-            <div style="background:#f8f9fa; padding:10px; border-radius:8px; display:flex; gap:5px;">
+            <h3 style="margin:0;">⚙️ 系統設定</h3>
+            
+            <h4 style="margin-bottom:5px; border-bottom:2px solid #eee;">1. 常用標籤</h4>
+            <div style="background:#f8f9fa; padding:10px; border-radius:8px; display:flex; gap:5px; margin-bottom:10px;">
                 <input type="text" id="newTagName" placeholder="新標籤名稱..." style="flex:1">
                 <input type="color" id="newTagColor" value="#17a2b8" style="width:40px; border:none; height:36px;">
                 <button class="primary" onclick="addPreset()">新增</button>
             </div>
-            <div id="presetList" style="max-height:300px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:10px;"></div>
-            <div style="text-align:right; margin-top:10px;">
+            <div id="presetList" style="max-height:150px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
+
+            <h4 style="margin-top:20px; margin-bottom:5px; border-bottom:2px solid #eee;">2. 自訂 Excel 欄位</h4>
+            <div style="background:#f0f8ff; padding:10px; border-radius:8px; display:flex; gap:5px; margin-bottom:10px;">
+                <input type="text" id="newFieldKey" placeholder="欄位代碼 (例: owner)" style="flex:1">
+                <input type="text" id="newFieldLabel" placeholder="顯示名稱 (例: 分派給)" style="flex:1">
+                <button class="primary" onclick="addCustomField()">新增欄位</button>
+            </div>
+            <div id="customFieldList" style="max-height:150px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:10px;"></div>
+
+            <div style="text-align:right; margin-top:20px;">
                 <button onclick="document.getElementById('settingsModal').style.display='none'">關閉</button>
             </div>
         </div>
@@ -280,107 +289,114 @@
     <script id="embedded-data" type="application/json"></script>
 
     <script>
-        // --- 全域變數 ---
-        let pdfDoc = null;
+        // --- 1. 全域變數定義 ---
+        let pdfDoc = null; 
         let annotations = []; 
-        let BATCH_SIZE = 10;
-        let currentBatchIndex = 0;
+        let BATCH_SIZE = 10; 
+        let currentBatchIndex = 0; 
         let totalBatches = 0;
-        let currentSelection = null;
+        let currentSelection = null; 
         let editMode = 'text'; 
         let isReaderMode = false;
-        let stopSearching = false; // 控制搜尋停止
         
-        // 記憶上次使用的設定 (UX 優化核心)
-        let lastUsedSettings = {
-            code: '',
-            color: '#ffeb3b',
-            priority: 'Medium',
-            status: 'New'
-        };
-
-        const AUTOSAVE_KEY = 'pdf_ultimate_autosave_v2';
-        const PRESETS_KEY = 'pdf_ultimate_presets';
-
-        // 預設標籤
+        // 記憶設定與自訂欄位
+        let lastUsedSettings = { code: '', color: '#ffeb3b', priority: 'Medium', status: 'New' };
+        let customFields = [];
         let tagPresets = [
-            { name: "功能需求", color: "#ffc107" },
-            { name: "資安規範", color: "#dc3545" },
-            { name: "交付項目", color: "#28a745" },
-            { name: "SLA", color: "#17a2b8" }
+            { name: "功能需求", color: "#ffc107" }, 
+            { name: "資安規範", color: "#dc3545" }, 
+            { name: "交付項目", color: "#28a745" }
         ];
 
-        // --- 初始化 ---
+        const AUTOSAVE_KEY = 'pdf_ult_v5_autosave';
+        const PRESETS_KEY = 'pdf_ult_v5_presets';
+        const CUSTOM_FIELDS_KEY = 'pdf_ult_v5_fields';
+
+        // --- 2. 初始化 ---
         window.onload = function() {
-            loadPresets();
-            checkEmbeddedData();
+            loadSettings(); 
+            checkEmbeddedData(); 
             if(!isReaderMode) checkAutoSave();
             
-            // 鍵盤事件監聽
+            // 鍵盤監聽：ESC 關閉，Ctrl+Enter 存檔
             window.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    if(document.getElementById('editorModal').style.display === 'flex') closeModal();
-                    else if(document.getElementById('settingsModal').style.display === 'flex') document.getElementById('settingsModal').style.display = 'none';
+                if (e.key === 'Escape') { 
+                    if(document.getElementById('editorModal').style.display === 'flex') closeModal(); 
+                    else if(document.getElementById('settingsModal').style.display === 'flex') document.getElementById('settingsModal').style.display = 'none'; 
                     else if(document.getElementById('searchPanel').style.display === 'flex') closeSearch();
                 }
-                // Ctrl+Enter 在 Modal 中存檔
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    if(document.getElementById('editorModal').style.display === 'flex') confirmAnnotation();
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { 
+                    if(document.getElementById('editorModal').style.display === 'flex') confirmAnnotation(); 
                 }
             });
         };
 
-        // --- 核心：PDF 載入與分批 ---
+        // --- 3. PDF 核心邏輯 (載入、分頁、渲染) ---
         async function handlePdfUpload(input) {
             const file = input.files[0]; if(!file) return;
             showLoader("正在解析 PDF...");
             if(isReaderMode) document.getElementById('readerFileName').innerText = file.name;
-
             try {
                 const buffer = await file.arrayBuffer();
                 pdfDoc = await pdfjsLib.getDocument(buffer).promise;
-                currentBatchIndex = 0;
-                calculateBatches();
+                currentBatchIndex = 0; 
+                calculateBatches(); // 計算分頁並產生選單
                 document.getElementById('placeholder').style.display = 'none';
                 document.getElementById('bottomNav').style.display = 'flex';
                 await renderCurrentBatch();
-            } catch(e) { alert("讀取失敗"); console.error(e); } 
-            finally { hideLoader(); input.value=''; }
+            } catch(e) { alert("讀取失敗"); console.error(e); } finally { hideLoader(); input.value=''; }
         }
 
-        function calculateBatches() { totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE); updateNavUI(); }
-        function changeBatchSize() { BATCH_SIZE = parseInt(document.getElementById('batchSizeSelect').value); currentBatchIndex=0; calculateBatches(); renderCurrentBatch(); }
+        // 計算分頁並產生下拉選單
+        function calculateBatches() { 
+            totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE);
+            const select = document.getElementById('jumpSelect'); select.innerHTML = '';
+            for(let i=0; i<totalBatches; i++) {
+                const s = i * BATCH_SIZE + 1; const e = Math.min((i+1) * BATCH_SIZE, pdfDoc.numPages);
+                const opt = document.createElement('option'); opt.value = i; opt.text = `第 ${s} - ${e} 頁`; select.appendChild(opt);
+            }
+            updateNavUI(); 
+        }
+
+        function changeBatchSize() { 
+            BATCH_SIZE = parseInt(document.getElementById('batchSizeSelect').value); 
+            currentBatchIndex=0; calculateBatches(); renderCurrentBatch(); 
+        }
+
+        function jumpToBatch(val) { 
+            currentBatchIndex = parseInt(val); renderCurrentBatch(); 
+        }
 
         async function renderCurrentBatch() {
             if(!pdfDoc) return;
-            showLoader(`載入第 ${currentBatchIndex+1} / ${totalBatches} 批...`);
+            showLoader("載入頁面中...");
             document.querySelectorAll('.pdf-page').forEach(p => p.remove());
-
-            const start = (currentBatchIndex * BATCH_SIZE) + 1;
+            
+            const start = (currentBatchIndex * BATCH_SIZE) + 1; 
             const end = Math.min(start + BATCH_SIZE - 1, pdfDoc.numPages);
-            updateNavUI(start, end);
+            
+            document.getElementById('jumpSelect').value = currentBatchIndex; 
+            updateNavUI();
 
             for(let i=start; i<=end; i++) await renderPage(i);
-            
-            hideLoader();
+            hideLoader(); 
             document.getElementById('viewerContainer').scrollTop = 0;
         }
 
         async function renderPage(num) {
-            const page = await pdfDoc.getPage(num);
-            const viewport = page.getViewport({ scale: 1.5 });
+            const page = await pdfDoc.getPage(num); const viewport = page.getViewport({ scale: 1.5 });
             const div = document.createElement('div'); div.className='pdf-page'; 
             div.style.width=`${viewport.width}px`; div.style.height=`${viewport.height}px`; div.dataset.pageNumber=num;
             div.style.cursor = editMode === 'text' ? 'text' : 'crosshair';
-
+            
             const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
             cvs.width=viewport.width; cvs.height=viewport.height;
+            
             const textLayer = document.createElement('div'); textLayer.className='textLayer';
             textLayer.style.width=`${viewport.width}px`; textLayer.style.height=`${viewport.height}px`;
-
-            div.append(cvs, textLayer);
-            document.getElementById('viewerContainer').appendChild(div);
-
+            
+            div.append(cvs, textLayer); document.getElementById('viewerContainer').appendChild(div);
+            
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
             const content = await page.getTextContent();
             pdfjsLib.renderTextLayer({ textContent: content, container: textLayer, viewport: viewport, textDivs: [] });
@@ -389,20 +405,16 @@
             restoreHighlights(num, div);
         }
 
-        // --- 核心：Magic Box 選取邏輯 ---
+        // --- 4. 互動邏輯 (文字/圖片框選) ---
         let isDrawing = false, startX, startY, marquee = null, activePageElement = null;
-
+        
         function enableBoxSelection(pageDiv, pageNum) {
             pageDiv.addEventListener('mousedown', (e) => {
-                if(e.target.classList.contains('highlight-text') || e.target.classList.contains('highlight-area')) return;
+                if(e.target.closest('.highlight-text') || e.target.closest('.highlight-area')) return;
                 isDrawing = true; activePageElement = pageDiv;
-                const rect = pageDiv.getBoundingClientRect();
-                startX = e.clientX - rect.left; startY = e.clientY - rect.top;
-                
+                const rect = pageDiv.getBoundingClientRect(); startX = e.clientX - rect.left; startY = e.clientY - rect.top;
                 marquee = document.createElement('div'); marquee.className = 'selection-marquee';
-                marquee.style.borderColor = editMode === 'text' ? '#007bff' : '#dc3545';
-                marquee.style.left = startX + 'px'; marquee.style.top = startY + 'px';
-                pageDiv.appendChild(marquee);
+                marquee.style.left = startX + 'px'; marquee.style.top = startY + 'px'; pageDiv.appendChild(marquee);
             });
 
             pageDiv.addEventListener('mousemove', (e) => {
@@ -414,142 +426,69 @@
             });
 
             pageDiv.addEventListener('mouseup', (e) => {
-                if (!isDrawing || activePageElement !== pageDiv) return;
-                isDrawing = false;
+                if (!isDrawing || activePageElement !== pageDiv) return; isDrawing = false;
                 const mRect = { left: parseFloat(marquee.style.left), top: parseFloat(marquee.style.top), width: parseFloat(marquee.style.width), height: parseFloat(marquee.style.height) };
                 
-                if (mRect.width > 10 && mRect.height > 10) {
+                if (mRect.width > 5 && mRect.height > 5) {
                     if (editMode === 'text') {
-                        // 抓文字 (優化版)
-                        const spans = pageDiv.querySelectorAll('.textLayer span');
-                        let captured = "";
+                        // 文字模式：計算覆蓋的文字 span
+                        const spans = pageDiv.querySelectorAll('.textLayer span'); let captured = "";
                         const mR = mRect.left + mRect.width; const mB = mRect.top + mRect.height;
-                        
-                        // 簡易排序，避免文字順序錯亂
                         let hitSpans = [];
-                        spans.forEach(s => {
-                            const sl = s.offsetLeft; const st = s.offsetTop;
-                            if (!(sl+s.offsetWidth < mRect.left || sl > mR || st+s.offsetHeight < mRect.top || st > mB)) {
-                                hitSpans.push(s);
-                            }
+                        spans.forEach(s => { 
+                            if (!(s.offsetLeft+s.offsetWidth < mRect.left || s.offsetLeft > mR || s.offsetTop+s.offsetHeight < mRect.top || s.offsetTop > mB)) hitSpans.push(s); 
                         });
-                        
-                        // 依照 Y 軸 -> X 軸 排序
-                        hitSpans.sort((a,b) => {
-                             const diffY = a.offsetTop - b.offsetTop;
-                             return Math.abs(diffY) < 10 ? a.offsetLeft - b.offsetLeft : diffY;
-                        });
-
-                        hitSpans.forEach(s => captured += s.innerText + " "); // 補個空格避免黏字
-
-                        if(captured.trim()) {
-                            currentSelection = { id:null, type:'text', page:pageNum, text:captured.trim(), rect:null };
-                            openModal();
-                        }
+                        // 排序：先上到下，再左到右
+                        hitSpans.sort((a,b) => (Math.abs(a.offsetTop - b.offsetTop) < 10) ? a.offsetLeft - b.offsetLeft : a.offsetTop - b.offsetTop);
+                        hitSpans.forEach(s => captured += s.innerText + " ");
+                        if(captured.trim()) { currentSelection = { id:null, type:'text', page:pageNum, text:captured.trim(), rect:null }; openModal(); }
                     } else {
-                        // 框圖表
-                        currentSelection = { id:null, type:'area', page:pageNum, text:'[圖表標記]', rect:mRect };
-                        openModal();
+                        // 圖片模式：從 Canvas 截圖
+                        const canvas = pageDiv.querySelector('canvas'); const tempCvs = document.createElement('canvas');
+                        tempCvs.width = mRect.width; tempCvs.height = mRect.height;
+                        tempCvs.getContext('2d').drawImage(canvas, mRect.left, mRect.top, mRect.width, mRect.height, 0, 0, mRect.width, mRect.height);
+                        currentSelection = { id:null, type:'area', page:pageNum, text:'[圖片標記]', rect:mRect, imageData: tempCvs.toDataURL() }; openModal();
                     }
                 }
                 marquee.remove();
             });
         }
 
-        // --- 標註恢復與高亮 ---
-        function restoreHighlights(pageNum, pageDiv) {
-            const pageAnns = annotations.filter(a => a.page === pageNum);
-            pageAnns.forEach(ann => {
-                if(ann.type === 'text') {
-                    const spans = pageDiv.querySelectorAll('.textLayer span');
-                    spans.forEach(s => {
-                        // 簡單的文字比對高亮，實際專案可用更精確的座標
-                        if(s.innerText.length > 1 && ann.text.includes(s.innerText)) {
-                            s.classList.add('highlight-text'); s.style.borderBottomColor = ann.color; s.style.backgroundColor = ann.color + '44';
-                            s.onclick = (e) => { e.stopPropagation(); editAnnotation(ann); };
-                        }
-                    });
-                } else if(ann.type === 'area') {
-                    const area = document.createElement('div'); area.className = 'highlight-area'; area.id = 'area-'+ann.id;
-                    area.style.left = ann.rect.left+'px'; area.style.top = ann.rect.top+'px';
-                    area.style.width = ann.rect.width+'px'; area.style.height = ann.rect.height+'px';
-                    area.style.borderColor = ann.color; area.style.backgroundColor = ann.color + '22';
-                    area.onclick = (e) => { e.stopPropagation(); editAnnotation(ann); };
-                    pageDiv.appendChild(area);
-                }
-            });
-        }
-
-        function editAnnotation(ann) {
-            if(isReaderMode) { openModal(null, ann); return; }
-            currentSelection = { ...ann }; openModal();
-        }
-
-        // --- 搜尋優化 (Async + Chunking) ---
+        // --- 5. 搜尋功能 (Async 避免凍結) ---
         function searchKeyword(k) { document.getElementById('globalSearchInput').value=k; performGlobalSearch(); }
         
         async function performGlobalSearch() {
             if(!pdfDoc) return;
             const q = document.getElementById('globalSearchInput').value.trim(); if(!q) return;
-            
             const list = document.getElementById('searchResultsList');
-            const title = document.getElementById('searchTitle');
-            const stopBtn = document.getElementById('stopSearchBtn');
-            
             document.getElementById('searchPanel').style.display='flex';
-            list.innerHTML = '';
-            stopBtn.style.display = 'inline-block';
-            stopSearching = false;
+            list.innerHTML='<div style="text-align:center;padding:10px;">搜尋中...</div>';
             
-            let count = 0;
-            const CHUNK_SIZE = 5; // 每次處理 5 頁，避免凍結
-
+            let res = [];
+            // 分塊搜尋
             for(let i=1; i<=pdfDoc.numPages; i++) {
-                if(stopSearching) {
-                    list.innerHTML += `<div style="text-align:center; padding:10px; color:#dc3545;">已停止搜尋</div>`;
-                    break;
+                const p = await pdfDoc.getPage(i); const c = await p.getTextContent();
+                const t = c.items.map(x=>x.str).join('');
+                if(t.toLowerCase().includes(q.toLowerCase())) {
+                    const idx = t.toLowerCase().indexOf(q.toLowerCase());
+                    res.push({page:i, snippet: t.substring(idx-10, idx+25)});
                 }
-
-                // 更新 UI 進度
-                title.innerText = `搜尋中... (${Math.round((i/pdfDoc.numPages)*100)}%)`;
-                
-                try {
-                    const p = await pdfDoc.getPage(i); 
-                    const c = await p.getTextContent();
-                    const t = c.items.map(x=>x.str).join(''); // 簡單拼接
-                    
-                    if(t.toLowerCase().includes(q.toLowerCase())) {
-                        count++;
-                        const idx = t.toLowerCase().indexOf(q.toLowerCase());
-                        const snippet = t.substring(Math.max(0, idx-10), Math.min(t.length, idx+30));
-                        
-                        const d = document.createElement('div'); d.className='search-item';
-                        d.innerHTML = `<span>P.${i} ...${snippet}...</span><button class="danger" style="font-size:0.7em;padding:2px 6px;">📌 標記</button>`;
-                        
-                        // 點文字跳轉
-                        d.querySelector('span').onclick = () => jumpToPage(i);
-                        // 點按鈕速標
-                        d.querySelector('button').onclick = (e) => {
-                            e.stopPropagation(); quickMark(i, snippet);
-                            e.target.innerText='✔'; e.target.disabled=true; e.target.className='primary';
-                        };
-                        list.appendChild(d);
-                    }
-                } catch(e) { console.error(e); }
-
-                // 讓瀏覽器喘口氣 (Yield to UI)
-                if(i % CHUNK_SIZE === 0) await new Promise(r => setTimeout(r, 0));
+                if(i % 10 === 0) await new Promise(r => setTimeout(r,0)); // 釋放 UI Thread
             }
             
-            title.innerText = `搜尋完成 (共 ${count} 筆)`;
-            stopBtn.style.display = 'none';
-            if(count === 0) list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">找不到相關內容</div>';
+            list.innerHTML = res.length ? '' : '<div style="text-align:center;">無結果</div>';
+            res.forEach(r => {
+                const d = document.createElement('div'); d.className='search-item';
+                d.innerHTML = `<span>P.${r.page} ...${r.snippet}...</span><button class="danger" style="font-size:0.7em;padding:2px 6px;">📌 標記</button>`;
+                d.querySelector('span').onclick = () => jumpToPage(r.page);
+                d.querySelector('button').onclick = (e) => {
+                    e.stopPropagation(); quickMark(r.page, r.snippet);
+                    e.target.innerText='✔'; e.target.disabled=true; e.target.className='primary';
+                };
+                list.appendChild(d);
+            });
         }
-        
-        function closeSearch() { 
-            stopSearching = true;
-            document.getElementById('searchPanel').style.display='none'; 
-        }
+        function closeSearch() { document.getElementById('searchPanel').style.display='none'; }
         
         function quickMark(page, text) {
             const id = Date.now().toString();
@@ -559,318 +498,268 @@
             });
             renderSidebar(); saveToLocal();
         }
-
+        
         function jumpToPage(p) {
             const tb = Math.floor((p-1)/BATCH_SIZE);
-            if(tb !== currentBatchIndex) { 
-                currentBatchIndex=tb; 
-                renderCurrentBatch().then(()=>setTimeout(()=>scrollToP(p),500)); 
-            } else {
-                scrollToP(p);
-            }
+            if(tb !== currentBatchIndex) { currentBatchIndex=tb; renderCurrentBatch().then(()=>setTimeout(()=>scrollToP(p),500)); }
+            else scrollToP(p);
         }
-        function scrollToP(p) { 
-            const el=document.querySelector(`.pdf-page[data-page-number="${p}"]`); 
-            if(el) {
-                el.scrollIntoView({behavior:'smooth'});
-                // 視覺提示：閃爍邊框
-                el.style.transition = 'box-shadow 0.3s';
-                el.style.boxShadow = '0 0 0 5px rgba(0,123,255,0.5)';
-                setTimeout(() => el.style.boxShadow = '', 1000);
-            }
-        }
+        function scrollToP(p) { const el=document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior:'smooth'}); }
 
-        // --- 標籤管理 (Settings) ---
-        function loadPresets() { const s=localStorage.getItem(PRESETS_KEY); if(s) tagPresets=JSON.parse(s); }
-        function savePresets() { localStorage.setItem(PRESETS_KEY, JSON.stringify(tagPresets)); }
-        function openSettings() {
-            const list = document.getElementById('presetList'); list.innerHTML='';
-            tagPresets.forEach((t,i) => {
-                const d=document.createElement('div'); d.className='tag-row';
-                d.innerHTML=`<div style="width:20px;height:20px;background:${t.color};border-radius:50%;"></div><span style="flex:1;">${t.name}</span><button class="danger" onclick="removePreset(${i})">刪除</button>`;
-                list.appendChild(d);
-            });
-            document.getElementById('settingsModal').style.display='flex';
-        }
-        function addPreset() {
-            const n=document.getElementById('newTagName').value; const c=document.getElementById('newTagColor').value;
-            if(n) { tagPresets.push({name:n, color:c}); savePresets(); openSettings(); document.getElementById('newTagName').value=''; }
-        }
-        function removePreset(i) { tagPresets.splice(i,1); savePresets(); openSettings(); }
-        
-        function renderQuickTags() {
-            const area = document.getElementById('quickTagArea'); area.innerHTML='';
-            tagPresets.forEach(t => {
-                const c=document.createElement('div'); c.className='tag-chip';
-                c.innerHTML=`<div class="tag-dot" style="background:${t.color}"></div>${t.name}`;
-                c.onclick=()=>{ 
-                    document.getElementById('codeName').value=t.name; 
-                    document.getElementById('codeColor').value=t.color; 
-                };
-                area.appendChild(c);
-            });
-        }
-
-        // --- Modal 操作 ---
-        function openModal(text, existing=null) {
+        // --- 6. Modal 操作 (自訂欄位 + 富文字) ---
+        function openModal(existing=null) {
             const m = document.getElementById('editorModal');
-            renderQuickTags();
+            renderQuickTags(); renderCustomFieldsInModal(existing ? existing.customData : null);
             
             if(isReaderMode) {
-                m.querySelectorAll('input,select,textarea').forEach(el=>el.disabled=true);
+                m.querySelectorAll('input,select').forEach(el=>el.disabled=true);
+                document.getElementById('codeMemo').contentEditable="false";
                 m.querySelector('.btn-save').style.display='none';
-                m.querySelector('.btn-delete').style.display='none';
             } else {
-                m.querySelectorAll('input,select,textarea').forEach(el=>el.disabled=false);
+                m.querySelectorAll('input,select').forEach(el=>el.disabled=false);
+                document.getElementById('codeMemo').contentEditable="true";
                 m.querySelector('.btn-save').style.display='block';
-                m.querySelector('.btn-delete').style.display='block';
             }
-
-            const isArea = currentSelection.type==='area';
-            document.getElementById('quoteText').innerHTML = isArea ? `<span style="color:#dc3545">🖼️ 圖表標記 (P.${currentSelection.page})</span>` : currentSelection.text;
-            document.getElementById('codeName').placeholder = isArea ? "輸入圖表名稱" : "輸入需求標籤";
+            
+            const pv = document.getElementById('quotePreview');
+            // 判斷是否為圖片，顯示預覽
+            if(currentSelection.type === 'area' && currentSelection.imageData) pv.innerHTML = `<img src="${currentSelection.imageData}">`;
+            else pv.innerHTML = currentSelection.text || '(無內容)';
 
             if(existing) {
-                // 編輯舊有的
                 document.getElementById('rtmId').value = existing.rtmId||'';
                 document.getElementById('codeName').value = existing.code;
                 document.getElementById('codeColor').value = existing.color;
                 document.getElementById('rtmPriority').value = existing.priority||'Medium';
                 document.getElementById('rtmStatus').value = existing.status||'New';
-                document.getElementById('codeMemo').value = existing.memo;
-                document.getElementById('modalTitle').querySelector('span').innerText = "✏️ 編輯";
+                document.getElementById('codeMemo').innerHTML = existing.memo;
                 currentSelection.id = existing.id;
             } else {
-                // 新增：使用 Last Used Settings (自動記憶)
+                // 自動帶入上次設定
                 document.getElementById('rtmId').value = '';
                 document.getElementById('codeName').value = lastUsedSettings.code;
                 document.getElementById('codeColor').value = lastUsedSettings.color;
                 document.getElementById('rtmPriority').value = lastUsedSettings.priority;
                 document.getElementById('rtmStatus').value = lastUsedSettings.status;
-                document.getElementById('codeMemo').value = '';
-                document.getElementById('modalTitle').querySelector('span').innerText = "📝 新增";
+                document.getElementById('codeMemo').innerHTML = '';
             }
-
             m.style.display = 'flex';
-            // 自動 Focus 到 RTM ID (如果已有 Tag) 或 Tag (如果是空的)
-            setTimeout(() => {
-                if(document.getElementById('codeName').value) document.getElementById('rtmId').focus();
-                else document.getElementById('codeName').focus();
-            }, 100);
         }
-
+        
         function closeModal() { document.getElementById('editorModal').style.display = 'none'; }
+        
+        // 富文字按鈕功能
+        function memoExec(cmd) { 
+            document.getElementById('codeMemo').focus(); 
+            document.execCommand(cmd === 'hilite' ? 'hiliteColor' : (cmd==='checkbox'?'insertHTML':'removeFormat'), false, cmd==='hilite'?'#ffeb3b':(cmd==='checkbox'?'&#x2610; ':null)); 
+        }
+        
+        // 渲染自訂欄位輸入框
+        function renderCustomFieldsInModal(data={}) {
+            const c = document.getElementById('customFieldsContainer'); c.innerHTML='';
+            if(customFields.length>0) {
+                c.style.display='block';
+                customFields.forEach(f => {
+                    const w = document.createElement('div'); w.style.marginTop='8px';
+                    w.innerHTML=`<label style="font-size:0.9em;color:#666;">${f.label}</label>`;
+                    const i = document.createElement('input'); i.type='text'; i.dataset.key=f.key; i.value=(data&&data[f.key])?data[f.key]:'';
+                    w.appendChild(i); c.appendChild(w);
+                });
+            } else c.style.display='none';
+        }
 
         function confirmAnnotation() {
             if(isReaderMode) return closeModal();
-            
-            const name = document.getElementById('codeName').value || (currentSelection.type==='area'?'圖表':'未命名');
+            const name = document.getElementById('codeName').value || (currentSelection.type==='area'?'圖片':'未命名');
             const color = document.getElementById('codeColor').value;
             const priority = document.getElementById('rtmPriority').value;
             const status = document.getElementById('rtmStatus').value;
-
-            // 更新記憶
-            lastUsedSettings = { code: name, color: color, priority: priority, status: status };
-
+            
+            // 收集自訂欄位資料
+            let cData = {}; 
+            document.querySelectorAll('#customFieldsContainer input').forEach(i => cData[i.dataset.key] = i.value);
+            
+            lastUsedSettings = { code: name, color, priority, status };
+            
             const newData = {
-                type: currentSelection.type, page: currentSelection.page, text: currentSelection.text, rect: currentSelection.rect,
-                rtmId: document.getElementById('rtmId').value,
-                code: name, color: color,
-                priority: priority, status: status,
-                memo: document.getElementById('codeMemo').value,
-                timestamp: new Date().toISOString()
+                type: currentSelection.type, page: currentSelection.page, text: currentSelection.text, rect: currentSelection.rect, imageData: currentSelection.imageData,
+                rtmId: document.getElementById('rtmId').value, code: name, color, priority, status, memo: document.getElementById('codeMemo').innerHTML,
+                customData: cData, timestamp: new Date().toISOString()
             };
 
             if(currentSelection.id) {
                 const i = annotations.findIndex(a=>a.id===currentSelection.id);
                 if(i!==-1) annotations[i] = {...annotations[i], ...newData};
-            } else {
-                annotations.push({ id:Date.now().toString(), ...newData });
-            }
+            } else annotations.push({ id:Date.now().toString(), ...newData });
+            
             renderSidebar(); saveToLocal(); closeModal(); renderCurrentBatch();
         }
 
-        function deleteAnnotation() {
-            if(!isReaderMode && currentSelection.id) {
-                if(confirm("確定刪除此標註？")) {
-                    annotations = annotations.filter(a=>a.id!==currentSelection.id);
-                    renderSidebar(); saveToLocal(); closeModal(); renderCurrentBatch();
-                }
-            }
-        }
-
-        // --- 側邊欄 ---
+        // --- 7. 側邊欄與高亮管理 (含按鈕群組) ---
         function renderSidebar() {
             const list = document.getElementById('sidebarList'); document.getElementById('count').innerText=annotations.length; list.innerHTML='';
             annotations.sort((a,b)=>a.page-b.page);
             annotations.forEach(a => {
-                const d = document.createElement('div'); d.className='list-item';
-                d.style.borderLeftColor = a.color;
-                
-                let pColor = '#ccc';
-                if(a.priority === 'High') pColor = '#dc3545';
-                if(a.priority === 'Low') pColor = '#28a745';
-                if(a.priority === 'Medium') pColor = '#ffc107';
-
+                const d = document.createElement('div'); d.className='list-item'; d.style.borderLeftColor = a.color;
                 const icon = a.type==='area'?'🖼️':'📝';
+                let info = a.customData && Object.keys(a.customData).length>0 ? ` | ${a.customData[Object.keys(a.customData)[0]]}` : '';
+                
+                // 產生項目 HTML (含編輯與刪除按鈕)
                 d.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;">
-                        <span>P.${a.page} ${icon}</span>
-                        <span style="display:flex;align-items:center;">
-                            <div class="priority-dot" style="background:${pColor}"></div>
-                            ${a.rtmId||''} ${a.priority}
-                        </span>
-                    </div>
-                    <div style="font-weight:bold;margin:4px 0;">${a.code}</div>
-                    <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${a.type==='area'?'(位置標記)':a.text}</div>
-                `;
-                d.onclick=()=>{
-                    const tb = Math.floor((a.page-1)/BATCH_SIZE);
-                    if(tb!==currentBatchIndex) { 
-                        if(confirm(`跳轉至 P.${a.page}?`)){ 
-                            currentBatchIndex=tb; 
-                            renderCurrentBatch().then(()=>setTimeout(()=>scrollToAnnotation(a),600)); 
-                        } 
-                    }
-                    else scrollToAnnotation(a);
-                };
+                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;"><span>P.${a.page} ${icon}</span><span>${a.priority}</span></div>
+                    <div style="font-weight:bold;margin:4px 0;">${a.code} <span style="font-weight:normal;font-size:0.8em;color:#666;">${info}</span></div>
+                    <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${a.rtmId?`<b>[${a.rtmId}]</b> `:''}${a.text}</div>
+                    <div class="item-actions">
+                        <button class="icon-btn btn-edit" title="編輯" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
+                        <button class="icon-btn btn-del" title="刪除" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
+                    </div>`;
+                d.onclick=()=>scrollToAnnotation(a); 
                 list.appendChild(d);
             });
         }
-        
+
+        // 核心跳轉邏輯
         function scrollToAnnotation(a) {
+            const tb = Math.floor((a.page-1)/BATCH_SIZE);
+            if(tb !== currentBatchIndex) { 
+                if(confirm(`跳轉至 P.${a.page}?`)){ 
+                    currentBatchIndex=tb; renderCurrentBatch().then(()=>setTimeout(()=>doScroll(a),500)); 
+                } 
+            } else doScroll(a);
+        }
+        
+        function doScroll(a) {
             const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`);
-            if(el) { 
-                el.scrollIntoView({behavior:'smooth'}); 
-                // 觸發高亮閃爍
-                if(a.type==='area'){ 
-                    const ar=document.getElementById('area-'+a.id); 
-                    if(ar){ 
-                        ar.classList.add('highlight-flash'); 
-                        setTimeout(()=>ar.classList.remove('highlight-flash'), 2000);
-                    }
-                } else {
-                    // 文字類型的閃爍稍微難一點，這裡簡單處理
-                    el.classList.add('highlight-flash');
-                    setTimeout(()=>el.classList.remove('highlight-flash'), 2000);
+            if(el) {
+                el.scrollIntoView({behavior:'smooth'});
+                // 視覺提示
+                if(a.type==='area') {
+                    const area = document.createElement('div'); area.className='highlight-area highlight-flash';
+                    area.style.left=a.rect.left+'px'; area.style.top=a.rect.top+'px'; area.style.width=a.rect.width+'px'; area.style.height=a.rect.height+'px';
+                    el.appendChild(area); setTimeout(()=>area.remove(),1000);
+                } else { 
+                    el.classList.add('highlight-flash'); setTimeout(()=>el.classList.remove('highlight-flash'),1000); 
                 }
             }
         }
-
-        // --- 存檔與匯出 ---
-        function saveToLocal() { 
-            if(!isReaderMode) {
-                const data = { annotations: annotations, timestamp: Date.now() };
-                localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
-            }
-        }
-
-        function checkAutoSave() {
-            const s = localStorage.getItem(AUTOSAVE_KEY);
-            if(s) { 
-                try{
-                    const d = JSON.parse(s);
-                    const dataList = Array.isArray(d) ? d : d.annotations;
-                    const ts = Array.isArray(d) ? 0 : d.timestamp;
-                    
-                    if(dataList && dataList.length>0) {
-                        const dateStr = ts ? new Date(ts).toLocaleString() : "未知時間";
-                        const isRecent = ts ? (Date.now() - ts < 86400000) : true;
-                        if(isRecent && confirm(`發現未存檔標註 (${dateStr})，共 ${dataList.length} 筆，是否復原?`)) {
-                            annotations=dataList; renderSidebar();
-                        }
-                    }
-                }catch(e){}
-            }
-        }
-
-        function clearAutoSave() { 
-            if(confirm("確定清除快取？這不會刪除已下載的檔案。")) {
-                localStorage.removeItem(AUTOSAVE_KEY); annotations=[]; renderSidebar(); renderCurrentBatch(); 
-            }
-        }
-
-        function saveProject() { 
-            const d = { annotations, presets:tagPresets };
-            download(JSON.stringify(d), `Project_${getDateStr()}.json`, 'application/json'); 
+        
+        // 點擊鉛筆按鈕觸發
+        function jumpAndEdit(id) { 
+            const a=annotations.find(x=>x.id===id); 
+            if(a) { currentSelection={...a}; scrollToAnnotation(a); setTimeout(()=>openModal(a),600); } 
         }
         
-        function handleProjectLoad(input) {
-            const f=input.files[0]; if(!f)return;
-            const r=new FileReader(); r.onload=e=>{
-                const d=JSON.parse(e.target.result); annotations=d.annotations||[];
-                if(d.presets) { tagPresets=d.presets; savePresets(); }
-                renderSidebar(); saveToLocal(); alert("專案載入成功！請匯入 PDF。");
-            }; r.readAsText(f); input.value='';
+        function deleteItem(id) { 
+            if(confirm("確定刪除此標註？")){ annotations=annotations.filter(a=>a.id!==id); renderSidebar(); saveToLocal(); renderCurrentBatch(); } 
         }
 
-        function exportReaderHtml() {
+        // 恢復頁面高亮框
+        function restoreHighlights(pageNum, pageDiv) {
+            annotations.filter(a=>a.page===pageNum).forEach(ann => {
+                if(ann.type==='text') {
+                    pageDiv.querySelectorAll('.textLayer span').forEach(s => {
+                        if(s.innerText.length>1 && ann.text.includes(s.innerText)) { 
+                            s.classList.add('highlight-text'); s.style.borderBottomColor=ann.color; 
+                            s.style.backgroundColor=ann.color+'44'; 
+                            s.onclick=(e)=>{e.stopPropagation(); jumpAndEdit(ann.id);} 
+                        }
+                    });
+                } else {
+                    const area = document.createElement('div'); area.className='highlight-area'; area.id='area-'+ann.id;
+                    area.style.left=ann.rect.left+'px'; area.style.top=ann.rect.top+'px'; area.style.width=ann.rect.width+'px'; area.style.height=ann.rect.height+'px'; area.style.borderColor=ann.color;
+                    area.onclick=(e)=>{e.stopPropagation(); jumpAndEdit(ann.id);}; 
+                    pageDiv.appendChild(area);
+                }
+            });
+        }
+
+        // --- 8. 設定與存取 ---
+        function loadSettings() { const p=localStorage.getItem(PRESETS_KEY); if(p) tagPresets=JSON.parse(p); const c=localStorage.getItem(CUSTOM_FIELDS_KEY); if(c) customFields=JSON.parse(c); }
+        function saveSettings() { localStorage.setItem(PRESETS_KEY, JSON.stringify(tagPresets)); localStorage.setItem(CUSTOM_FIELDS_KEY, JSON.stringify(customFields)); }
+        function openSettings() {
+            const pl=document.getElementById('presetList'); pl.innerHTML='';
+            tagPresets.forEach((t,i) => { 
+                const d = document.createElement('div'); d.className="mode-btn"; d.style.border=`1px solid ${t.color}`;
+                d.innerHTML=`<span style="color:${t.color}">●</span> ${t.name} <span style="cursor:pointer;color:red;" onclick="removePreset(${i})">×</span>`;
+                pl.appendChild(d);
+            });
+            const cl=document.getElementById('customFieldList'); cl.innerHTML='';
+            customFields.forEach((f,i) => { 
+                cl.innerHTML+=`<div style="padding:5px;border-bottom:1px solid #eee;"><b>${f.label}</b> (${f.key}) <button class="danger" style="font-size:0.7em;float:right;" onclick="removeField(${i})">刪除</button></div>`; 
+            });
+            document.getElementById('settingsModal').style.display='flex';
+        }
+        
+        function addPreset() { const n=document.getElementById('newTagName').value; const c=document.getElementById('newTagColor').value; if(n){ tagPresets.push({name:n, color:c}); saveSettings(); openSettings(); } }
+        function removePreset(i) { tagPresets.splice(i,1); saveSettings(); openSettings(); }
+        
+        function addCustomField() { const k=document.getElementById('newFieldKey').value; const l=document.getElementById('newFieldLabel').value; if(k&&l){ customFields.push({key:k, label:l}); saveSettings(); openSettings(); } }
+        function removeField(i) { customFields.splice(i,1); saveSettings(); openSettings(); }
+
+        function renderQuickTags() {
+            const a=document.getElementById('quickTagArea'); a.innerHTML='';
+            tagPresets.forEach(t => { 
+                a.innerHTML+=`<div class="mode-btn" style="border:1px solid ${t.color};margin-right:5px;" onclick="document.getElementById('codeName').value='${t.name}';document.getElementById('codeColor').value='${t.color}'"><span style="color:${t.color}">●</span> ${t.name}</div>`; 
+            });
+        }
+
+        // --- 9. 存檔與匯出 (含 Excel 動態欄位) ---
+        function saveToLocal() { if(!isReaderMode) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ annotations, timestamp: Date.now() })); }
+        function checkAutoSave() {
+            const s=localStorage.getItem(AUTOSAVE_KEY);
+            if(s) { try{ const d=JSON.parse(s); if(d.annotations.length>0 && confirm("發現未存檔紀錄，是否復原?")) { annotations=d.annotations; renderSidebar(); } }catch(e){} }
+        }
+        function clearAutoSave() { if(confirm("確定刪除全部紀錄？")) { localStorage.removeItem(AUTOSAVE_KEY); annotations=[]; renderSidebar(); renderCurrentBatch(); } }
+        
+        function saveProject() { download(JSON.stringify({ annotations, presets:tagPresets, customFields }), `Project_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); }
+        function handleProjectLoad(input) {
+            const f=input.files[0]; if(!f)return; const r=new FileReader();
+            r.onload=e=>{
+                const d=JSON.parse(e.target.result); annotations=d.annotations||[]; if(d.presets) tagPresets=d.presets; if(d.customFields) customFields=d.customFields;
+                saveSettings(); renderSidebar(); saveToLocal(); alert("專案載入成功！");
+            }; r.readAsText(f); input.value='';
+        }
+        
+        async function exportExcel() {
             if(annotations.length===0) return alert("無資料");
-            let html = document.documentElement.outerHTML;
-            const d = JSON.stringify({ annotations, presets:tagPresets });
-            // 使用 replace 更穩定的方式
-            html = html.replace(/<script id="embedded-data" type="application\/json">.*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`);
-            download(html, `Reader_Report_${getDateStr()}.html`, 'text/html');
+            const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('RTM');
+            let cols = [{header:'ID',key:'rtmId',width:15},{header:'Page',key:'page',width:8},{header:'Tag',key:'code',width:20},{header:'Priority',key:'priority'},{header:'Status',key:'status'},{header:'Text',key:'text',width:50},{header:'Memo',key:'memo',width:40}];
+            // 動態加入自訂欄位
+            customFields.forEach(f=>cols.push({header:f.label, key:f.key, width:20}));
+            ws.columns = cols;
+            ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}}; ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF444444'}};
+            annotations.forEach(a=>{
+                let d = {rtmId:a.rtmId, page:a.page, code:a.code, priority:a.priority, status:a.status, text:a.type==='area'?'[圖片]':a.text, memo:a.memo};
+                if(a.customData) customFields.forEach(f => d[f.key] = a.customData[f.key]||'');
+                const r=ws.addRow(d); r.getCell('code').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+a.color.replace('#','')}};
+            });
+            download(await wb.xlsx.writeBuffer(), `RTM_Report.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        }
+        
+        function exportReaderHtml() {
+            let h = document.documentElement.outerHTML;
+            const d = JSON.stringify({ annotations, presets:tagPresets, customFields });
+            h = h.replace(/<script id="embedded-data" type="application\/json">.*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`);
+            download(h, `Reader_Report.html`, 'text/html');
         }
         
         function checkEmbeddedData() {
             const s=document.getElementById('embedded-data');
             if(s && s.textContent.trim()) {
-                const d=JSON.parse(s.textContent); annotations=d.annotations||[];
-                isReaderMode=true; document.body.classList.add('mode-read');
-                renderSidebar(); alert("閱讀模式開啟，請匯入原始 PDF。");
+                const d=JSON.parse(s.textContent); annotations=d.annotations||[]; customFields=d.customFields||[];
+                isReaderMode=true; document.body.classList.add('mode-read'); renderSidebar(); alert("閱讀模式：僅供瀏覽");
             }
         }
-
-        async function exportExcel() {
-            if(annotations.length===0) return alert("無資料");
-            const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('RTM');
-            
-            ws.columns = [
-                {header:'ID',key:'rtmId', width: 15},
-                {header:'Page',key:'page', width: 8},
-                {header:'Type',key:'type', width: 8},
-                {header:'Tag',key:'code', width: 20},
-                {header:'Priority',key:'priority', width: 12},
-                {header:'Status',key:'status', width: 12},
-                {header:'Text',key:'text', width: 50},
-                {header:'Memo',key:'memo', width: 40}
-            ];
-
-            ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF444444' } };
-
-            annotations.forEach(a => {
-                const displayText = a.type === 'area' ? `(圖表區域) ${Math.round(a.rect.width)}x${Math.round(a.rect.height)}` : a.text;
-                const row = ws.addRow({
-                    rtmId: a.rtmId, page: a.page, type: a.type,
-                    code: a.code, priority: a.priority, status: a.status,
-                    text: displayText, memo: a.memo
-                });
-                
-                if(a.color) {
-                    const cleanColor = a.color.replace('#','');
-                    row.getCell('code').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF'+cleanColor } };
-                }
-            });
-
-            download(await wb.xlsx.writeBuffer(), `RTM_Report_${getDateStr()}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        }
-
-        function download(content, name, type) { const b=new Blob([content],{type}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; a.click(); }
+        
+        function download(c, n, t) { const b=new Blob([c],{type:t}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=n; a.click(); }
         function setMode(m) { editMode=m; document.getElementById('modeText').classList.toggle('active', m==='text'); document.getElementById('modeArea').classList.toggle('active', m==='area'); document.querySelectorAll('.pdf-page').forEach(p=>p.style.cursor=m==='text'?'text':'crosshair'); }
         function showLoader(t) { document.getElementById('loader').style.display='flex'; document.getElementById('loaderText').innerText=t; }
         function hideLoader() { document.getElementById('loader').style.display='none'; }
-        function getDateStr() { return new Date().toISOString().slice(0,10); }
-
         function prevBatch() { if(currentBatchIndex>0) { currentBatchIndex--; renderCurrentBatch(); } }
         function nextBatch() { if(currentBatchIndex<totalBatches-1) { currentBatchIndex++; renderCurrentBatch(); } }
-        function updateNavUI(s, e) {
-            if(pdfDoc) {
-                document.getElementById('batchInfo').innerText = `Page ${s} - ${e} / ${pdfDoc.numPages}`;
-                document.getElementById('btnPrev').disabled = currentBatchIndex===0; document.getElementById('btnPrev').style.opacity = currentBatchIndex===0?.5:1;
-                document.getElementById('btnNext').disabled = currentBatchIndex>=totalBatches-1; document.getElementById('btnNext').style.opacity = currentBatchIndex>=totalBatches-1?.5:1;
-            }
+        function updateNavUI() {
+             document.getElementById('btnPrev').disabled = currentBatchIndex===0; document.getElementById('btnPrev').style.opacity = currentBatchIndex===0?.5:1;
+             document.getElementById('btnNext').disabled = currentBatchIndex>=totalBatches-1; document.getElementById('btnNext').style.opacity = currentBatchIndex>=totalBatches-1?.5:1;
         }
     </script>
 </body>
