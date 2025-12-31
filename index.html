@@ -4,117 +4,347 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF 閱讀地圖 (Ultimate V7.6)</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
     <style>
-        /* --- 1. 基礎佈局 --- */
-        body { margin: 0; padding: 0; background: #333; font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        /* =========================================
+           1. 基礎佈局 (Basic Layout)
+           ========================================= */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #333; 
+            font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+        }
         
-        /* --- 2. 工具列 --- */
-        .toolbar { background: #222; color: white; padding: 10px 20px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 100; flex-shrink: 0; flex-wrap: wrap; }
-        .reader-toolbar { background: #202b38; color: white; padding: 15px 20px; display: none; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 101; flex-shrink: 0; }
-        h1 { margin: 0; font-size: 1.1em; color: #fff; margin-right: 10px; display:flex; align-items:center; gap:5px; user-select: none; }
-        
-        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; background: #444; color: white; transition: 0.2s; white-space: nowrap; font-size: 0.9em; display: inline-flex; align-items: center; gap: 4px; }
-        button:hover { background: #666; transform: translateY(-1px); }
-        button.primary { background: #28a745; } button.primary:hover { background: #218838; }
-        button.export { background: #17a2b8; } button.info { background: #138496; }
-        button.warning { background: #ffc107; color: #333; } button.danger { background: #dc3545; }
-        
-        .mode-switch { display: flex; background: #444; border-radius: 20px; padding: 2px; border: 1px solid #555; margin-right: 10px; }
-        .mode-btn { padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 0.85em; color: #ccc; transition: 0.2s; user-select: none; }
-        .mode-btn.active { background: #007bff; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        /* =========================================
+           2. 工具列樣式 (Toolbar)
+           ========================================= */
+        .toolbar { 
+            background: #222; 
+            color: white; 
+            padding: 10px 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
+            z-index: 100; 
+            flex-shrink: 0; 
+            flex-wrap: wrap; 
+        }
 
-        .search-box { display: flex; align-items: center; background: white; border-radius: 4px; overflow: hidden; margin-left: auto; }
-        .search-input { border: none; padding: 6px 10px; outline: none; font-size: 0.9em; width: 140px; color:#333; }
-        .search-btn { background: #ffc107; color: #333; border-radius: 0; padding: 6px 10px; }
+        .reader-toolbar { 
+            background: #202b38; 
+            color: white; 
+            padding: 15px 20px; 
+            display: none; /* 預設隱藏，閱讀模式才顯示 */
+            align-items: center; 
+            justify-content: space-between; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            z-index: 101; 
+            flex-shrink: 0; 
+        }
+
+        h1 { 
+            margin: 0; 
+            font-size: 1.1em; 
+            color: #fff; 
+            margin-right: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+            user-select: none; 
+        }
+        
+        /* 按鈕通用設定 */
+        button { 
+            padding: 6px 12px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            background: #444; 
+            color: white; 
+            transition: 0.2s; 
+            white-space: nowrap; 
+            font-size: 0.9em; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 4px; 
+        }
+        button:hover { background: #666; transform: translateY(-1px); }
+        
+        /* 各式按鈕顏色 */
+        button.primary { background: #28a745; } 
+        button.primary:hover { background: #218838; }
+        
+        button.export { background: #17a2b8; } 
+        button.info { background: #138496; }
+        
+        button.warning { background: #ffc107; color: #333; } 
+        button.danger { background: #dc3545; }
+        
+        /* 模式切換開關 */
+        .mode-switch { 
+            display: flex; 
+            background: #444; 
+            border-radius: 20px; 
+            padding: 2px; 
+            border: 1px solid #555; 
+            margin-right: 10px; 
+        }
+        .mode-btn { 
+            padding: 4px 12px; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-size: 0.85em; 
+            color: #ccc; 
+            transition: 0.2s; 
+            user-select: none; 
+        }
+        .mode-btn.active { 
+            background: #007bff; 
+            color: white; 
+            font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); 
+        }
+
+        /* 搜尋框 */
+        .search-box { 
+            display: flex; 
+            align-items: center; 
+            background: white; 
+            border-radius: 4px; 
+            overflow: hidden; 
+            margin-left: auto; 
+        }
+        .search-input { 
+            border: none; 
+            padding: 6px 10px; 
+            outline: none; 
+            font-size: 0.9em; 
+            width: 140px; 
+            color: #333; 
+        }
+        .search-btn { 
+            background: #ffc107; 
+            color: #333; 
+            border-radius: 0; 
+            padding: 6px 10px; 
+        }
         .search-btn:hover { background: #e0a800; }
 
-        /* --- 3. 工作區 --- */
+        /* =========================================
+           3. 工作區與 PDF (Workspace)
+           ========================================= */
         .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
-        #viewerContainer { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; align-items: center; padding: 20px; padding-bottom: 120px; background: #525659; user-select: none; }
         
-        /* 游標樣式 */
+        #viewerContainer { 
+            flex: 1; 
+            overflow-y: auto; 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            padding-bottom: 120px; 
+            background: #525659; 
+            user-select: none; 
+        }
+        
+        /* 抓取模式游標樣式 */
         body.grabbing-mode #viewerContainer, 
         body.grabbing-mode .pdf-page { cursor: grab !important; }
         body.grabbing-mode #viewerContainer:active { cursor: grabbing !important; }
 
-        .pdf-page { position: relative; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); background: white; cursor: crosshair; }
-        .selection-marquee { position: absolute; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); pointer-events: none; z-index: 100; }
+        .pdf-page { 
+            position: relative; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            background: white; 
+            cursor: crosshair; 
+        }
+        
+        /* 框選線樣式 */
+        .selection-marquee { 
+            position: absolute; 
+            border: 2px dashed #007bff; 
+            background-color: rgba(0, 123, 255, 0.2); 
+            pointer-events: none; 
+            z-index: 100; 
+        }
+        
         .textLayer { opacity: 1; line-height: 1.0; }
         .textLayer span { color: transparent; position: absolute; white-space: pre; cursor: crosshair; }
         
-        .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
-        .highlight-area { position: absolute; border: 3px solid #dc3545; background-color: rgba(220, 53, 69, 0.1); cursor: pointer; z-index: 50; transition: 0.2s; }
+        /* 高亮樣式 */
+        .highlight-text { 
+            background-color: rgba(255, 235, 59, 0.4); 
+            border-bottom: 2px solid #e6a800; 
+            cursor: pointer; 
+        }
+        .highlight-area { 
+            position: absolute; 
+            border: 3px solid #dc3545; 
+            background-color: rgba(220, 53, 69, 0.1); 
+            cursor: pointer; 
+            z-index: 50; 
+            transition: 0.2s; 
+        }
         .highlight-area:hover { background-color: rgba(220, 53, 69, 0.3); }
+        
+        /* 閃爍動畫 (跳轉提示) */
         .highlight-flash { animation: flash 1s ease-in-out; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; background-color: red; } }
         
-        /* --- 4. 側邊欄 --- */
-        .sidebar { width: 320px; background: #f8f9fa; border-left: 1px solid #ccc; display: flex; flex-direction: column; z-index: 90; }
-        .sidebar-header { padding: 10px; background: white; border-bottom: 1px solid #ddd; display:flex; flex-direction:column; gap:8px; }
+        /* =========================================
+           4. 側邊欄 (Sidebar)
+           ========================================= */
+        .sidebar { 
+            width: 320px; 
+            background: #f8f9fa; 
+            border-left: 1px solid #ccc; 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 90; 
+        }
+        .sidebar-header { 
+            padding: 10px; 
+            background: white; 
+            border-bottom: 1px solid #ddd; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+        }
         .sidebar-filter { width: 100%; padding: 5px; font-size: 0.9em; border: 1px solid #ccc; border-radius: 4px; }
         .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .list-item { background: white; padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; border-left: 5px solid #ccc; transition:0.2s; position: relative; padding-right: 50px; }
+        
+        .list-item { 
+            background: white; 
+            padding: 10px; 
+            margin-bottom: 8px; 
+            border-radius: 8px; 
+            border: 1px solid #ddd; 
+            cursor: pointer; 
+            border-left: 5px solid #ccc; 
+            transition: 0.2s; 
+            position: relative; 
+            padding-right: 50px; 
+        }
         .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fafafa; }
+        
+        /* 列表按鈕群 */
         .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
-        .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
+        .icon-btn { 
+            width: 24px; height: 24px; border: none; background: transparent; 
+            border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; 
+            font-size: 14px; color: #666; transition: 0.2s; 
+        }
         .icon-btn:hover { background: #eee; color: #000; }
         .btn-edit:hover { color: #007bff; background: #e7f1ff; }
         .btn-del:hover { color: #dc3545; background: #ffeeee; }
 
-        /* --- 5. 搜尋 --- */
-        #searchPanel { position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; }
-        .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color:#333; }
-        .search-results { overflow-y: auto; padding: 5px; flex:1; }
-        .search-item { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+        /* =========================================
+           5. 搜尋面板 (Search Panel)
+           ========================================= */
+        #searchPanel { 
+            position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; 
+            background: white; border: 1px solid #ccc; border-radius: 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; 
+        }
+        .search-header { 
+            padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; 
+            display: flex; justify-content: space-between; font-weight: bold; color: #333; 
+        }
+        .search-results { overflow-y: auto; padding: 5px; flex: 1; }
+        .search-item { 
+            padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; 
+            display: flex; gap: 10px; align-items: center; justify-content: space-between; 
+        }
         .search-item:hover { background: #f8f9fa; }
-        .search-tag { background: #e9ecef; color: #333; border: 1px solid #ced4da; font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor:pointer; }
+        .search-tag { 
+            background: #e9ecef; color: #333; border: 1px solid #ced4da; 
+            font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor: pointer; 
+        }
         .search-tag:hover { background: #007bff; color: white; border-color: #007bff; }
 
-        /* --- 6. 底部導覽 --- */
-        .floating-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; display: flex; gap: 15px; align-items: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; }
+        /* =========================================
+           6. 底部導覽 (Floating Nav)
+           ========================================= */
+        .floating-nav { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; 
+            display: flex; gap: 15px; align-items: center; color: white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; 
+        }
         
-        /* --- 7. Modal --- */
-        .modal { position: fixed; top:0; left:0; width:100%; height:100%; display:none; z-index:3000; pointer-events: none; }
+        /* =========================================
+           7. Modal 視窗 (關鍵：解鎖背景操作)
+           ========================================= */
+        .modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            display: none; z-index: 3000; 
+            pointer-events: none; /* 讓背景可以被點擊/捲動 */
+        }
         .modal-card { 
-            position: absolute; background: white; width: 450px; padding: 20px; 
+            position: absolute; /* 絕對定位以支援拖曳 */
+            background: white; width: 450px; padding: 20px; 
             border-radius: 12px; display: flex; flex-direction: column; gap: 12px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; 
-            pointer-events: auto; border: 1px solid #999;
+            pointer-events: auto; /* 恢復卡片本身的互動 */
+            border: 1px solid #999;
         }
-        .modal-drag-handle { cursor: move; user-select: none; }
+        .modal-drag-handle { cursor: move; user-select: none; } /* 拖曳把手 */
         
-        input, select { width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; font-family: inherit; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
         
-        /* --- 關鍵修改：預覽框 (可編輯) --- */
+        /* 預覽框 (可編輯) */
         .preview-box { 
-            background:#f0f0f0; padding:10px; font-size:0.9em; 
-            max-height:150px; overflow-y:auto; border-radius:4px; 
-            margin-bottom:10px; border: 1px solid #ccc;
-            resize: vertical;
-            /* 可編輯樣式 */
+            background: #f0f0f0; padding: 10px; font-size: 0.9em; 
+            max-height: 150px; overflow-y: auto; border-radius: 4px; 
+            margin-bottom: 10px; border: 1px solid #ccc;
+            resize: vertical; /* 允許手動拉高 */
             outline: none;
         }
         .preview-box:focus { background: white; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.2); }
-        .preview-box img { max-width: 100%; max-height: 130px; border: 1px solid #ccc; display: block; margin: 0 auto;}
+        .preview-box img { max-width: 100%; max-height: 130px; border: 1px solid #ccc; display: block; margin: 0 auto; }
         
+        /* 筆記工具列 */
         .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; flex-wrap: wrap; }
         .memo-btn { font-size: 0.8em; padding: 3px 8px; background: white; color: #333; border: 1px solid #ccc; }
-        .rich-memo { width: 100%; min-height: 100px; max-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: white; line-height: 1.5; font-size: 0.95em; overflow-wrap: break-word; word-wrap: break-word; resize: vertical; }
+        
+        /* 富文字編輯器 */
+        .rich-memo { 
+            width: 100%; min-height: 100px; max-height: 200px; padding: 10px; 
+            border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; 
+            background: white; line-height: 1.5; font-size: 0.95em; 
+            overflow-wrap: break-word; word-wrap: break-word; resize: vertical; 
+        }
         .rich-memo:focus { outline: 2px solid #007bff; border-color: transparent; }
         .rich-memo img { max-width: 100%; display: block; margin: 5px 0; border: 1px solid #eee; }
         .custom-fields-area { border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 5px; }
         
-        #settingsModal, #previewModal, #globalMemoModal { pointer-events: auto; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+        /* 置中型 Modal (設定/預覽/靈感) */
+        #settingsModal, #previewModal, #globalMemoModal { 
+            pointer-events: auto; /* 鎖定背景 */
+            background: rgba(0,0,0,0.4); 
+            justify-content: center; align-items: center; 
+        }
         #settingsModal .modal-card, #previewModal .modal-card, #globalMemoModal .modal-card { position: relative; }
         #settingsModal .modal-card { width: 600px; border-radius: 12px; height: auto; max-height: 85vh; }
         #globalMemoModal .modal-card { width: 600px; border-radius: 12px; height: 70vh; }
         #globalMemoEditor { max-height: none; height: 100%; }
         #previewModal .modal-card { width: 90%; max-width: 1200px; border-radius: 12px; height: 90vh; }
+        
+        /* 預覽表格 */
         .preview-table-container { flex: 1; overflow: auto; border: 1px solid #eee; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
@@ -123,10 +353,12 @@
         .data-table tr:hover { background-color: #f1f1f1; }
         .data-table img { max-width: 100px; max-height: 60px; }
 
+        /* Loader */
         #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 4000; }
         .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom:15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+        /* 閱讀模式樣式 */
         body.mode-read .toolbar { display: none; }
         body.mode-read .reader-toolbar { display: flex; }
     </style>
@@ -152,6 +384,7 @@
         <input type="file" id="projectInput" accept=".json" style="display:none" onchange="handleProjectLoad(this)">
         
         <div style="flex:1"></div> 
+        
         <button class="primary" onclick="saveProject()">💾 存檔</button>
         <button class="export" onclick="exportReaderHtml()">📦 打包</button>
         <button class="info" onclick="openDataPreview()">👀 預覽</button>
@@ -320,6 +553,7 @@
                 <button class="primary" onclick="addPreset()">新增</button>
             </div>
             <div id="presetList" style="max-height:100px; overflow-y:auto; border:1px solid #eee; padding:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
+            
             <h4 style="margin-top:15px; margin-bottom:5px; border-bottom:2px solid #eee;">2. 自訂 Excel 欄位</h4>
             <div style="background:#f0f8ff; padding:10px; border-radius:8px; display:flex; gap:5px; margin-bottom:10px;">
                 <input type="text" id="newFieldKey" placeholder="代碼 (例: date)" style="flex:1">
@@ -327,6 +561,7 @@
                 <button class="primary" onclick="addCustomField()">新增</button>
             </div>
             <div id="customFieldList" style="max-height:100px; overflow-y:auto; border:1px solid #eee; padding:10px;"></div>
+            
             <div style="margin-top:20px; padding-top:10px; border-top:1px solid #ccc; display:flex; justify-content:space-between;">
                 <button class="danger" onclick="resetAllData()">⚠️ 重置系統 (清空快取)</button>
                 <button onclick="document.getElementById('settingsModal').style.display='none'">關閉</button>
@@ -347,22 +582,36 @@
     <script id="embedded-data" type="application/json"></script>
 
     <script>
-        // --- 1. 全域變數 ---
-        let pdfDoc = null; let annotations = []; let BATCH_SIZE = 10; let currentBatchIndex = 0; let totalBatches = 0;
-        let currentSelection = null; let editMode = 'text'; let isReaderMode = false;
+        // =========================================
+        // 1. 全域變數 (Global Variables)
+        // =========================================
+        let pdfDoc = null; 
+        let annotations = []; 
+        let BATCH_SIZE = 10; 
+        let currentBatchIndex = 0; 
+        let totalBatches = 0;
+        let currentSelection = null; 
+        let editMode = 'text'; 
+        let isReaderMode = false;
         let globalMemo = ""; 
         let lastUsedSettings = { code: '', color: '#ffeb3b', priority: 'Medium', status: 'New' };
         let customFields = [];
         const AUTOSAVE_KEY = 'pdf_ult_v7_autosave'; 
         const TEMPLATE_KEY = 'pdf_ult_v7_template'; 
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
-        let activeMemoId = '';
-        let isSpacePressed = false; 
+        let activeMemoId = ''; // 圖片插入目標
+        let isSpacePressed = false; // 空白鍵狀態
         let autoScrollInterval = null; 
 
+        // =========================================
+        // 2. 初始化 (Initialization)
+        // =========================================
         window.onload = function() {
-            loadFromTemplate(true); checkEmbeddedData(); if(!isReaderMode) checkAutoSave();
+            loadFromTemplate(true); 
+            checkEmbeddedData(); 
+            if(!isReaderMode) checkAutoSave();
             
+            // 鍵盤監聽
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') { 
                     ['editorModal','settingsModal','previewModal','searchPanel','globalMemoModal'].forEach(id => document.getElementById(id).style.display='none');
@@ -380,30 +629,47 @@
             });
 
             document.getElementById('imageUploadInput').addEventListener('change', handleImageInsert);
-            makeDraggable(document.getElementById("editorCard"), document.getElementById("modalTitle"));
+            makeDraggable(document.getElementById("editorCard"), document.getElementById("modalTitle")); // 啟動拖曳
         };
 
-        // --- 2. 視窗拖曳 ---
+        // =========================================
+        // 3. 視窗拖曳功能 (Draggable)
+        // =========================================
         function makeDraggable(elmnt, handle) {
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
             handle.onmousedown = dragMouseDown;
+
             function dragMouseDown(e) {
-                e = e || window.event; e.preventDefault();
-                pos3 = e.clientX; pos4 = e.clientY;
-                document.onmouseup = closeDragElement; document.onmousemove = elementDrag;
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
             }
+
             function elementDrag(e) {
-                e = e || window.event; e.preventDefault();
-                pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
-                pos3 = e.clientX; pos4 = e.clientY;
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
                 elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
                 elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
             }
-            function closeDragElement() { document.onmouseup = null; document.onmousemove = null; }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
         }
 
-        // --- 3. 圖片插入 ---
+        // =========================================
+        // 4. 圖片插入邏輯
+        // =========================================
         function triggerImageUpload(targetId) { activeMemoId = targetId; document.getElementById('imageUploadInput').click(); }
+        
         function handleImageInsert(e) {
             const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -414,14 +680,22 @@
             reader.readAsDataURL(file); e.target.value = '';
         }
 
-        // --- 4. PDF 核心 ---
+        // =========================================
+        // 5. PDF 核心 (Upload & Render)
+        // =========================================
         async function handlePdfUpload(input) {
             const file = input.files[0]; if(!file) return;
             showLoader("正在解析 PDF...");
             if(isReaderMode) document.getElementById('readerFileName').innerText = file.name;
             try {
-                const buffer = await file.arrayBuffer(); pdfDoc = await pdfjsLib.getDocument(buffer).promise;
-                if(currentBatchIndex === 0 && localStorage.getItem('last_batch_idx')) currentBatchIndex = parseInt(localStorage.getItem('last_batch_idx'));
+                const buffer = await file.arrayBuffer();
+                pdfDoc = await pdfjsLib.getDocument(buffer).promise;
+                
+                // 恢復閱讀進度 (優先 JSON 紀錄，其次 LocalStorage)
+                if(currentBatchIndex === 0 && localStorage.getItem('last_batch_idx')) {
+                    currentBatchIndex = parseInt(localStorage.getItem('last_batch_idx'));
+                }
+                
                 calculateBatches();
                 document.getElementById('placeholder').style.display = 'none';
                 document.getElementById('bottomNav').style.display = 'flex';
@@ -446,6 +720,7 @@
             if(!pdfDoc) return;
             showLoader("載入頁面中...");
             if(!isReaderMode) localStorage.setItem('last_batch_idx', currentBatchIndex);
+            
             document.querySelectorAll('.pdf-page').forEach(p => p.remove());
             const start = (currentBatchIndex * BATCH_SIZE) + 1; const end = Math.min(start + BATCH_SIZE - 1, pdfDoc.numPages);
             document.getElementById('jumpSelect').value = currentBatchIndex; updateNavUI();
@@ -470,7 +745,9 @@
             restoreHighlights(num, div);
         }
 
-        // --- 5. 互動 (Magic Box) ---
+        // =========================================
+        // 6. 互動與框選 (Magic Box + Pan)
+        // =========================================
         let isDrawing = false, startX, startY, marquee = null, activePageElement = null;
         let isPanning = false, panStartX, panStartY, panScrollTop, panScrollLeft;
 
@@ -478,6 +755,7 @@
             const container = document.getElementById('viewerContainer');
             pageDiv.addEventListener('mousedown', (e) => {
                 if(document.getElementById('editorModal').style.display === 'flex') return;
+
                 if (isSpacePressed) {
                     isPanning = true; panStartX = e.clientX; panStartY = e.clientY;
                     panScrollTop = container.scrollTop; panScrollLeft = container.scrollLeft;
@@ -498,6 +776,7 @@
                 }
                 if (!isDrawing || activePageElement !== pageDiv) return;
                 
+                // 智慧邊緣捲動
                 const viewportHeight = window.innerHeight;
                 clearInterval(autoScrollInterval); 
                 if (e.clientY > viewportHeight - 50) autoScrollInterval = setInterval(() => { container.scrollTop += 15; }, 20);
@@ -535,7 +814,93 @@
             });
         }
 
-        // --- 6. 功能與設定 ---
+        // =========================================
+        // 7. 編輯與 Modal (含亂碼修正)
+        // =========================================
+        function openModal(existing=null) {
+            const m = document.getElementById('editorModal');
+            const card = document.getElementById('editorCard');
+            // 重置位置
+            card.style.top = "50px"; card.style.right = "20px"; card.style.left = "auto";
+            
+            renderQuickTags(); renderCustomFieldsInModal(existing ? existing.customData : null);
+            
+            // 處理唯讀模式
+            const isReadOnly = isReaderMode;
+            m.querySelectorAll('input,select').forEach(el => el.disabled = isReadOnly);
+            document.getElementById('codeMemo').contentEditable = !isReadOnly;
+            // 讓預覽框可以編輯
+            document.getElementById('quotePreview').contentEditable = !isReadOnly;
+            m.querySelector('.btn-save').style.display = isReadOnly ? 'none' : 'block';
+            
+            const pv = document.getElementById('quotePreview');
+            if(currentSelection.type === 'area' && currentSelection.imageData) {
+                pv.innerHTML = `<img src="${currentSelection.imageData}">`;
+                pv.style.textAlign = 'center';
+            } else {
+                pv.innerText = currentSelection.text || '(無內容)';
+                pv.style.textAlign = 'left';
+            }
+
+            if(existing) {
+                document.getElementById('rtmId').value = existing.rtmId||''; document.getElementById('codeName').value = existing.code;
+                document.getElementById('codeColor').value = existing.color; document.getElementById('rtmPriority').value = existing.priority||'Medium';
+                document.getElementById('rtmStatus').value = existing.status||'New'; document.getElementById('codeMemo').innerHTML = existing.memo;
+                currentSelection.id = existing.id;
+            } else {
+                document.getElementById('rtmId').value = ''; document.getElementById('codeName').value = lastUsedSettings.code;
+                document.getElementById('codeColor').value = lastUsedSettings.color; document.getElementById('rtmPriority').value = lastUsedSettings.priority;
+                document.getElementById('rtmStatus').value = lastUsedSettings.status; document.getElementById('codeMemo').innerHTML = '';
+            }
+            m.style.display = 'flex';
+        }
+        
+        function closeModal() { document.getElementById('editorModal').style.display = 'none'; }
+        function memoExec(cmd) { document.getElementById('codeMemo').focus(); document.execCommand(cmd === 'hilite' ? 'hiliteColor' : (cmd==='checkbox'?'insertHTML':'removeFormat'), false, cmd==='hilite'?'#ffeb3b':(cmd==='checkbox'?'&#x2610; ':null)); }
+        
+        function renderCustomFieldsInModal(data={}) {
+            const c = document.getElementById('customFieldsContainer'); c.innerHTML='';
+            if(customFields.length>0) {
+                c.style.display='block';
+                customFields.forEach(f => {
+                    const w = document.createElement('div'); w.style.marginTop='8px'; w.innerHTML=`<label style="font-size:0.9em;color:#666;">${f.label}</label>`;
+                    const i = document.createElement('input'); i.type='text'; i.dataset.key=f.key; i.value=(data&&data[f.key])?data[f.key]:'';
+                    w.appendChild(i); c.appendChild(w);
+                });
+            } else c.style.display='none';
+        }
+        
+        function confirmAnnotation() {
+            if(isReaderMode) return closeModal();
+            const name = document.getElementById('codeName').value || (currentSelection.type==='area'?'圖片':'未命名');
+            const color = document.getElementById('codeColor').value; const priority = document.getElementById('rtmPriority').value; const status = document.getElementById('rtmStatus').value;
+            let cData = {}; document.querySelectorAll('#customFieldsContainer input').forEach(i => cData[i.dataset.key] = i.value);
+            lastUsedSettings = { code: name, color, priority, status };
+            
+            // 讀取可能被修改過的預覽文字
+            let finalText = currentSelection.text;
+            if (currentSelection.type === 'text') {
+                finalText = document.getElementById('quotePreview').innerText;
+            }
+
+            const newData = {
+                type: currentSelection.type, page: currentSelection.page, 
+                text: finalText, 
+                rect: currentSelection.rect, imageData: currentSelection.imageData,
+                rtmId: document.getElementById('rtmId').value, code: name, color, priority, status, 
+                memo: document.getElementById('codeMemo').innerHTML,
+                customData: cData, timestamp: new Date().toISOString()
+            };
+            if(currentSelection.id) {
+                const i = annotations.findIndex(a=>a.id===currentSelection.id);
+                if(i!==-1) annotations[i] = {...annotations[i], ...newData};
+            } else annotations.push({ id:Date.now().toString(), ...newData });
+            renderSidebar(); saveToLocal(); closeModal(); renderCurrentBatch();
+        }
+
+        // =========================================
+        // 8. 其他功能 (搜尋/設定/存檔)
+        // =========================================
         function openGlobalMemo() { document.getElementById('globalMemoEditor').innerHTML = globalMemo; document.getElementById('globalMemoModal').style.display = 'flex'; }
         function saveGlobalMemo() { globalMemo = document.getElementById('globalMemoEditor').innerHTML; saveToLocal(); document.getElementById('globalMemoModal').style.display = 'none'; }
         function globalMemoExec(cmd) { document.getElementById('globalMemoEditor').focus(); document.execCommand(cmd === 'hilite' ? 'hiliteColor' : (cmd==='checkbox'?'insertHTML':'removeFormat'), false, cmd==='hilite'?'#ffeb3b':(cmd==='checkbox'?'&#x2610; ':null)); }
@@ -571,95 +936,6 @@
         function jumpToPage(p) { const tb = Math.floor((p-1)/BATCH_SIZE); if(tb !== currentBatchIndex) { currentBatchIndex=tb; renderCurrentBatch().then(()=>setTimeout(()=>scrollToP(p),500)); } else scrollToP(p); }
         function scrollToP(p) { const el=document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior:'smooth'}); }
 
-        // --- 7. Modal & Edit (關鍵修改：預覽框可編輯) ---
-        function openModal(existing=null) {
-            const m = document.getElementById('editorModal');
-            const card = document.getElementById('editorCard');
-            // 重置位置
-            card.style.top = "50px"; card.style.right = "20px"; card.style.left = "auto";
-            
-            renderQuickTags(); renderCustomFieldsInModal(existing ? existing.customData : null);
-            
-            // 啟用/停用編輯功能
-            const isReadOnly = isReaderMode;
-            m.querySelectorAll('input,select').forEach(el => el.disabled = isReadOnly);
-            document.getElementById('codeMemo').contentEditable = !isReadOnly;
-            // 關鍵：如果不是唯讀模式，預覽框也要可以編輯
-            document.getElementById('quotePreview').contentEditable = !isReadOnly;
-            
-            m.querySelector('.btn-save').style.display = isReadOnly ? 'none' : 'block';
-            
-            const pv = document.getElementById('quotePreview');
-            // 設定樣式：文字模式靠左，圖片模式置中
-            if(currentSelection.type === 'area' && currentSelection.imageData) {
-                pv.innerHTML = `<img src="${currentSelection.imageData}">`;
-                pv.style.textAlign = 'center';
-            } else {
-                // 文字模式：如果內容有問題，使用者可以直接點這裡修改
-                pv.innerText = currentSelection.text || '(無內容)';
-                pv.style.textAlign = 'left';
-            }
-
-            if(existing) {
-                document.getElementById('rtmId').value = existing.rtmId||''; document.getElementById('codeName').value = existing.code;
-                document.getElementById('codeColor').value = existing.color; document.getElementById('rtmPriority').value = existing.priority||'Medium';
-                document.getElementById('rtmStatus').value = existing.status||'New'; document.getElementById('codeMemo').innerHTML = existing.memo;
-                currentSelection.id = existing.id;
-            } else {
-                document.getElementById('rtmId').value = ''; document.getElementById('codeName').value = lastUsedSettings.code;
-                document.getElementById('codeColor').value = lastUsedSettings.color; document.getElementById('rtmPriority').value = lastUsedSettings.priority;
-                document.getElementById('rtmStatus').value = lastUsedSettings.status; document.getElementById('codeMemo').innerHTML = '';
-            }
-            m.style.display = 'flex';
-        }
-        function closeModal() { document.getElementById('editorModal').style.display = 'none'; }
-        function memoExec(cmd) { document.getElementById('codeMemo').focus(); document.execCommand(cmd === 'hilite' ? 'hiliteColor' : (cmd==='checkbox'?'insertHTML':'removeFormat'), false, cmd==='hilite'?'#ffeb3b':(cmd==='checkbox'?'&#x2610; ':null)); }
-        function renderCustomFieldsInModal(data={}) {
-            const c = document.getElementById('customFieldsContainer'); c.innerHTML='';
-            if(customFields.length>0) {
-                c.style.display='block';
-                customFields.forEach(f => {
-                    const w = document.createElement('div'); w.style.marginTop='8px'; w.innerHTML=`<label style="font-size:0.9em;color:#666;">${f.label}</label>`;
-                    const i = document.createElement('input'); i.type='text'; i.dataset.key=f.key; i.value=(data&&data[f.key])?data[f.key]:'';
-                    w.appendChild(i); c.appendChild(w);
-                });
-            } else c.style.display='none';
-        }
-        
-        function confirmAnnotation() {
-            if(isReaderMode) return closeModal();
-            const name = document.getElementById('codeName').value || (currentSelection.type==='area'?'圖片':'未命名');
-            const color = document.getElementById('codeColor').value; const priority = document.getElementById('rtmPriority').value; const status = document.getElementById('rtmStatus').value;
-            let cData = {}; document.querySelectorAll('#customFieldsContainer input').forEach(i => cData[i.dataset.key] = i.value);
-            lastUsedSettings = { code: name, color, priority, status };
-            
-            // 關鍵修改：從預覽框讀取「使用者可能修正過」的文字
-            let finalText = currentSelection.text;
-            // 只有在文字模式下，才去讀取 innerText，避免把圖片代碼讀成文字
-            if (currentSelection.type === 'text') {
-                finalText = document.getElementById('quotePreview').innerText;
-            }
-
-            const newData = {
-                type: currentSelection.type, 
-                page: currentSelection.page, 
-                text: finalText, // 使用修正後的文字
-                rect: currentSelection.rect, 
-                imageData: currentSelection.imageData,
-                rtmId: document.getElementById('rtmId').value, 
-                code: name, color, priority, status, 
-                memo: document.getElementById('codeMemo').innerHTML,
-                customData: cData, 
-                timestamp: new Date().toISOString()
-            };
-            if(currentSelection.id) {
-                const i = annotations.findIndex(a=>a.id===currentSelection.id);
-                if(i!==-1) annotations[i] = {...annotations[i], ...newData};
-            } else annotations.push({ id:Date.now().toString(), ...newData });
-            renderSidebar(); saveToLocal(); closeModal(); renderCurrentBatch();
-        }
-
-        // --- 8. 設定與其他 ---
         function openSettings() {
             const pl=document.getElementById('presetList'); pl.innerHTML='';
             tagPresets.forEach((t,i) => { pl.innerHTML+=`<div class="mode-btn" style="border:1px solid ${t.color}"><span style="color:${t.color}">●</span> ${t.name} <span style="cursor:pointer;color:red;" onclick="removePreset(${i})">×</span></div>`; });
@@ -757,6 +1033,64 @@
             html += '</tbody></table>';
             document.getElementById('previewContent').innerHTML = html;
             document.getElementById('previewModal').style.display = 'flex';
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('sidebarList'); document.getElementById('count').innerText=annotations.length; list.innerHTML='';
+            const filterVal = document.getElementById('sidebarFilter').value;
+            let filtered = annotations.filter(a => {
+                if(filterVal === 'all') return true;
+                if(filterVal === 'High') return a.priority === 'High';
+                if(filterVal === 'Pending') return a.status === 'Pending';
+                if(filterVal === 'Image') return a.type === 'area';
+                return true;
+            });
+            filtered.sort((a,b)=>a.page-b.page);
+            filtered.forEach(a => {
+                const d = document.createElement('div'); d.className='list-item'; d.style.borderLeftColor = a.color;
+                const icon = a.type==='area'?'🖼️':'📝';
+                let info = a.customData && Object.keys(a.customData).length>0 ? ` | ${a.customData[Object.keys(a.customData)[0]]}` : '';
+                d.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;"><span>P.${a.page} ${icon}</span><span>${a.priority}</span></div>
+                    <div style="font-weight:bold;margin:4px 0;">${a.code} <span style="font-weight:normal;font-size:0.8em;color:#666;">${info}</span></div>
+                    <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${a.rtmId?`<b>[${a.rtmId}]</b> `:''}${a.text}</div>
+                    <div class="item-actions">
+                        <button class="icon-btn btn-edit" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
+                        <button class="icon-btn btn-del" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
+                    </div>`;
+                d.onclick=()=>scrollToAnnotation(a); list.appendChild(d);
+            });
+        }
+        function scrollToAnnotation(a) {
+            const tb = Math.floor((a.page-1)/BATCH_SIZE);
+            if(tb !== currentBatchIndex) { if(confirm(`跳轉至 P.${a.page}?`)){ currentBatchIndex=tb; renderCurrentBatch().then(()=>setTimeout(()=>doScroll(a),500)); } }
+            else doScroll(a);
+        }
+        function doScroll(a) {
+            const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`);
+            if(el) {
+                el.scrollIntoView({behavior:'smooth'});
+                if(a.type==='area') {
+                    const area = document.createElement('div'); area.className='highlight-area highlight-flash';
+                    area.style.left=a.rect.left+'px'; area.style.top=a.rect.top+'px'; area.style.width=a.rect.width+'px'; area.style.height=a.rect.height+'px';
+                    el.appendChild(area); setTimeout(()=>area.remove(),1000);
+                } else { el.classList.add('highlight-flash'); setTimeout(()=>el.classList.remove('highlight-flash'),1000); }
+            }
+        }
+        function jumpAndEdit(id) { const a=annotations.find(x=>x.id===id); if(a) { currentSelection={...a}; scrollToAnnotation(a); setTimeout(()=>openModal(a),600); } }
+        function deleteItem(id) { if(confirm("刪除？")){ annotations=annotations.filter(a=>a.id!==id); renderSidebar(); saveToLocal(); renderCurrentBatch(); } }
+        function restoreHighlights(pageNum, pageDiv) {
+            annotations.filter(a=>a.page===pageNum).forEach(ann => {
+                if(ann.type==='text') {
+                    pageDiv.querySelectorAll('.textLayer span').forEach(s => {
+                        if(s.innerText.length>1 && ann.text.includes(s.innerText)) { s.classList.add('highlight-text'); s.style.borderBottomColor=ann.color; s.style.backgroundColor=ann.color+'44'; s.onclick=(e)=>{e.stopPropagation(); jumpAndEdit(ann.id);} }
+                    });
+                } else {
+                    const area = document.createElement('div'); area.className='highlight-area'; area.id='area-'+ann.id;
+                    area.style.left=ann.rect.left+'px'; area.style.top=ann.rect.top+'px'; area.style.width=ann.rect.width+'px'; area.style.height=ann.rect.height+'px'; area.style.borderColor=ann.color;
+                    area.onclick=(e)=>{e.stopPropagation(); jumpAndEdit(ann.id);}; pageDiv.appendChild(area);
+                }
+            });
         }
     </script>
 </body>
