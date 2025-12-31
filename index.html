@@ -3,483 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V7.9)</title>
+    <title>PDF 閱讀地圖 (Ultimate V8.0)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        // 設定 PDF Worker 路徑，這是 PDF.js 運作必須的
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 
     <style>
         /* =========================================
-           1. 基礎佈局 (Base Layout)
+           1. 基礎佈局 (Layout)
            ========================================= */
         body { 
-            margin: 0; 
-            padding: 0; 
-            background: #333; 
+            margin: 0; padding: 0; background: #333; 
             font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; /* 防止整個網頁出現捲軸 */
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden; 
         }
         
-        /* =========================================
-           2. 工具列樣式 (Toolbar)
-           ========================================= */
+        /* 工具列 */
         .toolbar { 
-            background: #222; 
-            color: white; 
-            padding: 10px 20px; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
-            z-index: 100; 
-            flex-shrink: 0; 
-            flex-wrap: wrap; 
+            background: #222; color: white; padding: 10px 20px; 
+            display: flex; align-items: center; gap: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 100; flex-shrink: 0; flex-wrap: wrap; 
         }
-
         .reader-toolbar { 
-            background: #202b38; 
-            color: white; 
-            padding: 15px 20px; 
-            display: none; 
-            align-items: center; 
-            justify-content: space-between; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
-            z-index: 101; 
-            flex-shrink: 0; 
+            background: #202b38; color: white; padding: 15px 20px; 
+            display: none; align-items: center; justify-content: space-between; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 101; flex-shrink: 0; 
         }
-
-        h1 { 
-            margin: 0; 
-            font-size: 1.1em; 
-            color: #fff; 
-            margin-right: 10px; 
-            display: flex; 
-            align-items: center; 
-            gap: 5px; 
-            user-select: none; 
-        }
+        h1 { margin: 0; font-size: 1.1em; color: #fff; margin-right: 10px; display: flex; align-items: center; gap: 5px; user-select: none; }
         
-        /* 按鈕通用樣式 */
+        /* 按鈕樣式 */
         button { 
-            padding: 6px 12px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            background: #444; 
-            color: white; 
-            transition: 0.2s; 
-            white-space: nowrap; 
-            font-size: 0.9em; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 4px; 
+            padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; 
+            font-weight: bold; background: #444; color: white; transition: 0.2s; 
+            white-space: nowrap; font-size: 0.9em; display: inline-flex; align-items: center; gap: 4px; 
         }
+        button:hover { background: #666; transform: translateY(-1px); }
+        button.primary { background: #28a745; } button.primary:hover { background: #218838; }
+        button.export { background: #17a2b8; } button.info { background: #138496; }
+        button.warning { background: #ffc107; color: #333; } button.danger { background: #dc3545; }
         
-        button:hover { 
-            background: #666; 
-            transform: translateY(-1px); 
-        }
-        
-        /* 各功能按鈕顏色定義 */
-        button.primary { background: #28a745; } 
-        button.primary:hover { background: #218838; }
-        
-        button.export { background: #17a2b8; } 
-        button.info { background: #138496; }
-        
-        button.warning { background: #ffc107; color: #333; } 
-        button.danger { background: #dc3545; }
-        
-        /* 模式切換開關 (抓文字/框圖表) */
-        .mode-switch { 
-            display: flex; 
-            background: #444; 
-            border-radius: 20px; 
-            padding: 2px; 
-            border: 1px solid #555; 
-            margin-right: 10px; 
-        }
-        
-        .mode-btn { 
-            padding: 4px 12px; 
-            border-radius: 15px; 
-            cursor: pointer; 
-            font-size: 0.85em; 
-            color: #ccc; 
-            transition: 0.2s; 
-            user-select: none; 
-        }
-        
-        .mode-btn.active { 
-            background: #007bff; 
-            color: white; 
-            font-weight: bold; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3); 
-        }
+        /* 縮放按鈕特製 */
+        .zoom-btn { width: 30px; justify-content: center; padding: 6px 0; }
 
-        /* 搜尋框樣式 */
-        .search-box { 
-            display: flex; 
-            align-items: center; 
-            background: white; 
-            border-radius: 4px; 
-            overflow: hidden; 
-            margin-left: auto; 
-        }
-        
-        .search-input { 
-            border: none; 
-            padding: 6px 10px; 
-            outline: none; 
-            font-size: 0.9em; 
-            width: 140px; 
-            color: #333; 
-        }
-        
-        .search-btn { 
-            background: #ffc107; 
-            color: #333; 
-            border-radius: 0; 
-            padding: 6px 10px; 
-        }
-        
+        .mode-switch { display: flex; background: #444; border-radius: 20px; padding: 2px; border: 1px solid #555; margin-right: 10px; }
+        .mode-btn { padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 0.85em; color: #ccc; transition: 0.2s; user-select: none; }
+        .mode-btn.active { background: #007bff; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+        .search-box { display: flex; align-items: center; background: white; border-radius: 4px; overflow: hidden; margin-left: auto; }
+        .search-input { border: none; padding: 6px 10px; outline: none; font-size: 0.9em; width: 140px; color: #333; }
+        .search-btn { background: #ffc107; color: #333; border-radius: 0; padding: 6px 10px; }
         .search-btn:hover { background: #e0a800; }
 
         /* =========================================
-           3. 工作區與 PDF 顯示 (Workspace)
+           2. 工作區 (Workspace)
            ========================================= */
-        .workspace { 
-            display: flex; 
-            flex: 1; 
-            overflow: hidden; 
-            position: relative; 
-        }
-        
+        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; }
         #viewerContainer { 
-            flex: 1; 
-            overflow-y: auto; 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            padding-bottom: 120px; 
-            background: #525659; 
-            user-select: none; /* 禁止預設選取，改用 Magic Box */
+            flex: 1; overflow-y: auto; position: relative; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px; padding-bottom: 120px; background: #525659; user-select: none; 
         }
         
-        /* 空白鍵平移模式游標 */
-        body.grabbing-mode #viewerContainer, 
-        body.grabbing-mode .pdf-page { 
-            cursor: grab !important; 
-        }
-        
-        body.grabbing-mode #viewerContainer:active { 
-            cursor: grabbing !important; 
-        }
+        body.grabbing-mode #viewerContainer, body.grabbing-mode .pdf-page { cursor: grab !important; }
+        body.grabbing-mode #viewerContainer:active { cursor: grabbing !important; }
 
-        /* PDF 頁面容器 */
-        .pdf-page { 
-            position: relative; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-            background: white; 
-            cursor: crosshair; 
-        }
-        
-        /* 框選時的虛線框 */
-        .selection-marquee { 
-            position: absolute; 
-            border: 2px dashed #007bff; 
-            background-color: rgba(0, 123, 255, 0.2); 
-            pointer-events: none; 
-            z-index: 100; 
-        }
-        
-        /* 文字層 (Text Layer) */
+        .pdf-page { position: relative; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); background: white; cursor: crosshair; }
+        .selection-marquee { position: absolute; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); pointer-events: none; z-index: 100; }
         .textLayer { opacity: 1; line-height: 1.0; }
         .textLayer span { color: transparent; position: absolute; white-space: pre; cursor: crosshair; }
         
-        /* 高亮樣式 */
-        .highlight-text { 
-            background-color: rgba(255, 235, 59, 0.4); 
-            border-bottom: 2px solid #e6a800; 
-            cursor: pointer; 
-        }
-        
-        .highlight-area { 
-            position: absolute; 
-            border: 3px solid #dc3545; 
-            background-color: rgba(220, 53, 69, 0.1); 
-            cursor: pointer; 
-            z-index: 50; 
-            transition: 0.2s; 
-        }
-        
+        .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
+        .highlight-area { position: absolute; border: 3px solid #dc3545; background-color: rgba(220, 53, 69, 0.1); cursor: pointer; z-index: 50; transition: 0.2s; }
         .highlight-area:hover { background-color: rgba(220, 53, 69, 0.3); }
-        
-        /* 跳轉時的閃爍動畫 */
         .highlight-flash { animation: flash 1s ease-in-out; }
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; background-color: red; } }
+        @keyframes flash { 0%, 100% { opacity: 1; border-color: red; box-shadow: 0 0 15px red; } 50% { opacity: 0.2; } }
         
         /* =========================================
-           4. 側邊欄 (Sidebar)
+           3. 側邊欄 (Sidebar)
            ========================================= */
-        .sidebar { 
-            width: 320px; 
-            background: #f8f9fa; 
-            border-left: 1px solid #ccc; 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 90; 
-        }
+        .sidebar { width: 320px; background: #f8f9fa; border-left: 1px solid #ccc; display: flex; flex-direction: column; z-index: 90; }
+        .sidebar-header { padding: 10px; background: white; border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
+        .sidebar-filter { width: 100%; padding: 5px; font-size: 0.9em; border: 1px solid #ccc; border-radius: 4px; }
+        .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
         
-        .sidebar-header { 
-            padding: 10px; 
-            background: white; 
-            border-bottom: 1px solid #ddd; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
-        }
-        
-        .sidebar-filter { 
-            width: 100%; 
-            padding: 5px; 
-            font-size: 0.9em; 
-            border: 1px solid #ccc; 
-            border-radius: 4px; 
-        }
-        
-        .sidebar-list { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 10px; 
-        }
-        
-        /* 列表項目 */
-        .list-item { 
-            background: white; 
-            padding: 10px; 
-            margin-bottom: 8px; 
-            border-radius: 8px; 
-            border: 1px solid #ddd; 
-            cursor: pointer; 
-            border-left: 5px solid #ccc; 
-            transition: 0.2s; 
-            position: relative; 
-            padding-right: 50px; 
-        }
-        
-        .list-item:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-            background-color: #fafafa; 
-        }
-        
-        /* 列表內的按鈕群組 (編輯/刪除) */
-        .item-actions { 
-            position: absolute; 
-            top: 5px; 
-            right: 5px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 2px; 
-        }
-        
-        .icon-btn { 
-            width: 24px; 
-            height: 24px; 
-            border: none; 
-            background: transparent; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-size: 14px; 
-            color: #666; 
-            transition: 0.2s; 
-        }
-        
+        .list-item { background: white; padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; border-left: 5px solid #ccc; transition: 0.2s; position: relative; padding-right: 50px; }
+        .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fafafa; }
+        .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
+        .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
         .icon-btn:hover { background: #eee; color: #000; }
-        .btn-edit:hover { color: #007bff; background: #e7f1ff; }
-        .btn-del:hover { color: #dc3545; background: #ffeeee; }
-        
-        /* 標籤小球 */
-        .tag-badge { 
-            display: inline-block; 
-            padding: 2px 6px; 
-            border-radius: 10px; 
-            font-size: 0.75em; 
-            color: white; 
-            background: #999; 
-            margin-right: 5px; 
-            vertical-align: middle; 
-        }
+        .tag-badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 0.75em; color: white; background: #999; margin-right: 5px; vertical-align: middle; }
 
         /* =========================================
-           5. 搜尋面板與導覽 (Floating Elements)
+           4. 浮動元件 (Nav & Search)
            ========================================= */
-        #searchPanel { 
-            position: absolute; top: 60px; right: 340px; 
-            width: 320px; max-height: 500px; 
-            background: white; border: 1px solid #ccc; border-radius: 8px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
-            display: none; flex-direction: column; z-index: 2000; 
-        }
-        
-        .search-header { 
-            padding: 10px; 
-            background: #f1f3f5; 
-            border-bottom: 1px solid #ddd; 
-            display: flex; 
-            justify-content: space-between; 
-            font-weight: bold; 
-            color: #333; 
-        }
-        
+        #searchPanel { position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; }
+        .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color: #333; }
         .search-results { overflow-y: auto; padding: 5px; flex: 1; }
-        
-        .search-item { 
-            padding: 10px; 
-            border-bottom: 1px solid #f0f0f0; 
-            font-size: 0.9em; 
-            display: flex; 
-            gap: 10px; 
-            align-items: center; 
-            justify-content: space-between; 
-        }
-        
+        .search-item { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
         .search-item:hover { background: #f8f9fa; }
-        
-        .search-tag { 
-            background: #e9ecef; color: #333; 
-            border: 1px solid #ced4da; 
-            font-size: 0.8em; 
-            padding: 4px 10px; 
-            border-radius: 15px; 
-            cursor: pointer; 
-        }
+        .search-tag { background: #e9ecef; color: #333; border: 1px solid #ced4da; font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor: pointer; }
         .search-tag:hover { background: #007bff; color: white; border-color: #007bff; }
 
         .floating-nav { 
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            background: rgba(33, 37, 41, 0.95); 
-            padding: 8px 15px; 
-            border-radius: 50px; 
-            display: flex; gap: 15px; align-items: center; 
-            color: white; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
-            z-index: 200; 
-            backdrop-filter: blur(4px); 
-            border: 1px solid #555; 
+            background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; 
+            display: flex; gap: 10px; align-items: center; color: white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; 
         }
         
         /* =========================================
-           6. Modal 與編輯器 (Editor) - 核心區
+           5. Modal (可拖曳、背景不鎖定)
            ========================================= */
-        .modal { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            display: none; z-index: 3000; 
-            pointer-events: none; /* 重要：允許背景點擊/捲動 */
-        }
-        
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 3000; pointer-events: none; }
         .modal-card { 
-            position: absolute; 
-            background: white; 
-            width: 450px; 
-            padding: 20px; 
-            border-radius: 12px; 
-            display: flex; flex-direction: column; gap: 12px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4); 
-            max-height: 90vh; 
-            overflow-y: auto; 
-            pointer-events: auto; /* 恢復卡片本身的互動 */
-            border: 1px solid #999;
+            position: absolute; background: white; width: 450px; padding: 20px; 
+            border-radius: 12px; display: flex; flex-direction: column; gap: 12px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; 
+            pointer-events: auto; border: 1px solid #999;
         }
-        
         .modal-drag-handle { cursor: move; user-select: none; }
         
-        input, select { 
-            width: 100%; 
-            padding: 8px; 
-            border: 1px solid #ddd; 
-            border-radius: 4px; 
-            box-sizing: border-box; 
-            font-family: inherit; 
-        }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
         
-        /* 預覽框 (可編輯) */
-        .preview-box { 
-            background: #f0f0f0; 
-            padding: 10px; 
-            font-size: 0.9em; 
-            max-height: 150px; 
-            overflow-y: auto; 
-            border-radius: 4px; 
-            margin-bottom: 10px; 
-            border: 1px solid #ccc; 
-            resize: vertical; /* 允許手動拉高 */
-            outline: none;
-        }
-        .preview-box:focus { 
-            background: white; 
-            border-color: #007bff; 
-            box-shadow: 0 0 0 2px rgba(0,123,255,0.2); 
-        }
+        .preview-box { background: #f0f0f0; padding: 10px; font-size: 0.9em; max-height: 150px; overflow-y: auto; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; resize: vertical; outline: none; }
+        .preview-box:focus { background: white; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.2); }
         .preview-box img { max-width: 100%; max-height: 130px; border: 1px solid #ccc; display: block; margin: 0 auto; }
         
-        /* 富文字工具列 */
-        .memo-toolbar { 
-            display: flex; gap: 5px; 
-            margin-bottom: 5px; 
-            background: #eee; 
-            padding: 5px; 
-            border-radius: 4px; 
-            flex-wrap: wrap; 
-        }
+        .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; flex-wrap: wrap; }
         .memo-btn { font-size: 0.8em; padding: 3px 8px; background: white; color: #333; border: 1px solid #ccc; }
-        
-        /* 富文字編輯框 (防爆版) */
-        .rich-memo { 
-            width: 100%; min-height: 100px; max-height: 200px; 
-            padding: 10px; 
-            border: 1px solid #ddd; border-radius: 4px; 
-            overflow-y: auto; 
-            background: white; 
-            line-height: 1.5; font-size: 0.95em; 
-            overflow-wrap: break-word; word-wrap: break-word; 
-            resize: vertical; 
-        }
+        .rich-memo { width: 100%; min-height: 100px; max-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: white; line-height: 1.5; font-size: 0.95em; overflow-wrap: break-word; word-wrap: break-word; resize: vertical; }
         .rich-memo:focus { outline: 2px solid #007bff; border-color: transparent; }
         .rich-memo img { max-width: 100%; display: block; margin: 5px 0; border: 1px solid #eee; }
-        
         .custom-fields-area { border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 5px; }
         
-        /* 置中型 Modal (設定/預覽) */
-        #settingsModal, #previewModal, #globalMemoModal { 
-            pointer-events: auto; /* 鎖定背景 */
-            background: rgba(0,0,0,0.4); 
-            justify-content: center; align-items: center; 
-        }
+        #settingsModal, #previewModal, #globalMemoModal { pointer-events: auto; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
         #settingsModal .modal-card, #previewModal .modal-card, #globalMemoModal .modal-card { position: relative; }
-        #settingsModal .modal-card { width: 600px; }
+        #settingsModal .modal-card { width: 600px; height: auto; max-height: 85vh; }
         #globalMemoModal .modal-card { width: 600px; height: 70vh; }
         #globalMemoEditor { max-height: none; height: 100%; }
         #previewModal .modal-card { width: 90%; max-width: 1200px; height: 90vh; }
         
-        /* 預覽表格 */
         .preview-table-container { flex: 1; overflow: auto; border: 1px solid #eee; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
         .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
@@ -488,19 +153,8 @@
         .data-table tr:hover { background-color: #f1f1f1; }
         .data-table img { max-width: 100px; max-height: 60px; }
 
-        /* Loader 動畫 */
-        #loader { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); color: white; 
-            display: none; flex-direction: column; justify-content: center; align-items: center; 
-            z-index: 4000; 
-        }
-        .spinner { 
-            width: 30px; height: 30px; 
-            border: 3px solid #f3f3f3; border-top: 3px solid #3498db; 
-            border-radius: 50%; 
-            animation: spin 1s linear infinite; margin-bottom: 15px; 
-        }
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 4000; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         body.mode-read .toolbar { display: none; }
@@ -512,7 +166,7 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ 閱讀地圖 <span style="font-size:0.5em; opacity:0.6;">V7.9</span></h1>
+        <h1>🛠️ 閱讀地圖 <span style="font-size:0.5em; opacity:0.6;">V8.0</span></h1>
         
         <div class="mode-switch">
             <div class="mode-btn active" id="modeText" onclick="setMode('text')">📝 抓文字</div>
@@ -554,7 +208,7 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>功能升級：4碼自動編號、獨立標題、亂碼修正、視窗拖曳</p>
+                <p>功能升級：縮放功能、自動編號、獨立標題、亂碼修正</p>
             </div>
             <div id="searchPanel">
                 <div class="search-header">
@@ -589,6 +243,12 @@
     </div>
 
     <div class="floating-nav" id="bottomNav" style="display:none;">
+        <div style="display:flex; gap:5px; border-right:1px solid #666; padding-right:10px; margin-right:10px; align-items:center;">
+            <button class="zoom-btn" onclick="changeScale(-0.25)">-</button>
+            <span id="zoomLevel" style="font-size:0.9em; min-width:40px; text-align:center;">150%</span>
+            <button class="zoom-btn" onclick="changeScale(0.25)">+</button>
+        </div>
+
         <button id="btnPrev" onclick="prevBatch()" style="border-radius:20px; padding:6px 15px;">⬅</button>
         <select id="jumpSelect" onchange="jumpToBatch(this.value)" style="width:auto; padding:4px; background:#333; color:white; border:none; margin:0 5px;">
             <option value="0">Page 1 - ...</option>
@@ -694,7 +354,7 @@
                     <button class="warning" style="font-size:0.8em;" onclick="loadFromTemplate()">載入樣板</button>
                 </div>
             </div>
-            <h4 style="margin-bottom:5px; border-bottom:2px solid #eee;">1. 常用標籤</h4>
+            <h4 style="margin-bottom:5px; border-bottom:2px solid #eee;">1. 常用標籤 (Categories)</h4>
             <div style="background:#f8f9fa; padding:10px; border-radius:8px; display:flex; gap:5px; margin-bottom:10px;">
                 <input type="text" id="newTagName" placeholder="名稱..." style="flex:1">
                 <input type="color" id="newTagColor" value="#17a2b8" style="width:40px; border:none; height:36px;">
@@ -745,9 +405,12 @@
         let lastUsedSettings = { code: '', color: '#ffeb3b', priority: 'Medium', status: 'New' };
         let customFields = [];
         
+        // V8.0 新增：縮放比例，預設 1.5 (150%)
+        let currentScale = 1.5;
+
         // 儲存鍵值
-        const AUTOSAVE_KEY = 'pdf_ult_v7_autosave'; 
-        const TEMPLATE_KEY = 'pdf_ult_v7_template'; 
+        const AUTOSAVE_KEY = 'pdf_ult_v8_autosave'; 
+        const TEMPLATE_KEY = 'pdf_ult_v8_template'; 
         
         // 預設標籤
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
@@ -854,7 +517,7 @@
         }
 
         // =========================================
-        // 5. PDF 核心 (Upload & Render)
+        // 5. PDF 核心 (Upload & Render) - V8.0: 支援縮放
         // =========================================
         async function handlePdfUpload(input) {
             const file = input.files[0]; if(!file) return;
@@ -896,6 +559,16 @@
             currentBatchIndex = parseInt(val); renderCurrentBatch(); 
         }
 
+        // V8.0: 新增縮放功能
+        function changeScale(delta) {
+            const newScale = currentScale + delta;
+            // 限制縮放範圍 50% ~ 500%
+            if(newScale < 0.5 || newScale > 5.0) return;
+            currentScale = newScale;
+            document.getElementById('zoomLevel').innerText = Math.round(currentScale * 100) + "%";
+            renderCurrentBatch();
+        }
+
         async function renderCurrentBatch() {
             if(!pdfDoc) return;
             showLoader("載入頁面中...");
@@ -906,11 +579,15 @@
             document.getElementById('jumpSelect').value = currentBatchIndex; updateNavUI();
             
             for(let i=start; i<=end; i++) await renderPage(i);
-            hideLoader(); document.getElementById('viewerContainer').scrollTop = 0;
+            hideLoader(); 
+            // 保持在當前位置，不強制滾回頂部 (體驗較佳)
         }
 
         async function renderPage(num) {
-            const page = await pdfDoc.getPage(num); const viewport = page.getViewport({ scale: 1.5 });
+            const page = await pdfDoc.getPage(num); 
+            // V8.0: 使用動態 scale
+            const viewport = page.getViewport({ scale: currentScale });
+            
             const div = document.createElement('div'); div.className='pdf-page'; 
             div.style.width=`${viewport.width}px`; div.style.height=`${viewport.height}px`; div.dataset.pageNumber=num;
             div.style.cursor = editMode === 'text' ? 'text' : 'crosshair';
@@ -931,7 +608,7 @@
         }
 
         // =========================================
-        // 6. 互動 (Magic Box + Pan)
+        // 6. 互動 (Magic Box + Pan) - V8.0: 智慧捲動
         // =========================================
         let isDrawing = false, startX, startY, marquee = null, activePageElement = null;
         let isPanning = false, panStartX, panStartY, panScrollTop, panScrollLeft;
@@ -963,7 +640,7 @@
                 }
                 if (!isDrawing || activePageElement !== pageDiv) return;
                 
-                // 智慧邊緣捲動
+                // V8.0: 智慧邊緣捲動
                 const viewportHeight = window.innerHeight;
                 clearInterval(autoScrollInterval); 
                 if (e.clientY > viewportHeight - 50) autoScrollInterval = setInterval(() => { container.scrollTop += 15; }, 20);
@@ -981,24 +658,26 @@
                 if (!isDrawing || activePageElement !== pageDiv) return; isDrawing = false;
                 
                 const mRect = { left: parseFloat(marquee.style.left), top: parseFloat(marquee.style.top), width: parseFloat(marquee.style.width), height: parseFloat(marquee.style.height) };
-                
-                // 判斷框選是否有效 (太小則忽略)
                 if (mRect.width > 5 && mRect.height > 5) {
                     if (editMode === 'text') {
-                        // 文字模式：計算覆蓋文字
+                        // 文字模式
                         const spans = pageDiv.querySelectorAll('.textLayer span'); let captured = "";
                         const mR = mRect.left + mRect.width; const mB = mRect.top + mRect.height;
                         let hitSpans = [];
                         spans.forEach(s => { if (!(s.offsetLeft+s.offsetWidth < mRect.left || s.offsetLeft > mR || s.offsetTop+s.offsetHeight < mRect.top || s.offsetTop > mB)) hitSpans.push(s); });
                         hitSpans.sort((a,b) => (Math.abs(a.offsetTop - b.offsetTop) < 10) ? a.offsetLeft - b.offsetLeft : a.offsetTop - b.offsetTop);
                         hitSpans.forEach(s => captured += s.innerText + " ");
-                        if(captured.trim()) { currentSelection = { id:null, type:'text', page:pageNum, text:captured.trim(), rect:null }; openModal(); }
+                        // V8.0: 座標正規化 (儲存時除以 scale)
+                        const normRect = { left: mRect.left/currentScale, top: mRect.top/currentScale, width: mRect.width/currentScale, height: mRect.height/currentScale };
+                        if(captured.trim()) { currentSelection = { id:null, type:'text', page:pageNum, text:captured.trim(), rect:normRect }; openModal(); }
                     } else {
-                        // 圖片模式：Canvas 截圖
+                        // 圖片模式
                         const canvas = pageDiv.querySelector('canvas'); const tempCvs = document.createElement('canvas');
                         tempCvs.width = mRect.width; tempCvs.height = mRect.height;
                         tempCvs.getContext('2d').drawImage(canvas, mRect.left, mRect.top, mRect.width, mRect.height, 0, 0, mRect.width, mRect.height);
-                        currentSelection = { id:null, type:'area', page:pageNum, text:'[圖片標記]', rect:mRect, imageData: tempCvs.toDataURL() }; openModal();
+                        // V8.0: 座標正規化
+                        const normRect = { left: mRect.left/currentScale, top: mRect.top/currentScale, width: mRect.width/currentScale, height: mRect.height/currentScale };
+                        currentSelection = { id:null, type:'area', page:pageNum, text:'[圖片標記]', rect:normRect, imageData: tempCvs.toDataURL() }; openModal();
                     }
                 }
                 if(marquee) marquee.remove(); marquee = null;
@@ -1041,7 +720,8 @@
         function closeSearch() { document.getElementById('searchPanel').style.display='none'; }
         function quickMark(page, text) { const id = Date.now().toString(); annotations.push({ id, type:'text', page, text, title: '速標項目', rect:null, code:'重點速標', color:'#dc3545', rtmId:'-', priority:'High', status:'New', memo:'搜尋標記', timestamp:new Date().toISOString() }); renderSidebar(); saveToLocal(); }
         function jumpToPage(p) { const tb = Math.floor((p-1)/BATCH_SIZE); if(tb !== currentBatchIndex) { currentBatchIndex=tb; renderCurrentBatch().then(()=>setTimeout(()=>scrollToP(p),500)); } else scrollToP(p); }
-        function scrollToP(p) { const el=document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior:'smooth'}); }
+        // V8.0: 滾動至中心
+        function scrollToP(p) { const el=document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior:'smooth', block: 'center'}); }
 
         // =========================================
         // 8. Modal & Edit (自動編號 4 碼)
@@ -1049,14 +729,13 @@
         function generateNextId() {
             let maxId = 0;
             annotations.forEach(a => {
-                // 檢查是否符合 REQ-數字 格式
                 const match = (a.rtmId || "").match(/^REQ-(\d+)$/);
                 if (match) {
                     const num = parseInt(match[1]);
                     if (num > maxId) maxId = num;
                 }
             });
-            // 補齊 4 位數，例如 1 -> 0001
+            // 補齊 4 位數
             return `REQ-${String(maxId + 1).padStart(4, '0')}`;
         }
 
@@ -1091,7 +770,6 @@
                 document.getElementById('codeMemo').innerHTML = existing.memo;
                 currentSelection.id = existing.id;
             } else {
-                // 自動帶入下一號
                 document.getElementById('rtmId').value = generateNextId(); 
                 document.getElementById('rtmTitle').value = ''; 
                 document.getElementById('codeName').value = lastUsedSettings.code;
@@ -1128,7 +806,6 @@
             let cData = {}; document.querySelectorAll('#customFieldsContainer input').forEach(i => cData[i.dataset.key] = i.value);
             lastUsedSettings = { code: name, color, priority, status };
             
-            // 讀取修正後的文字
             let finalText = currentSelection.text;
             if (currentSelection.type === 'text') finalText = document.getElementById('quotePreview').innerText;
 
@@ -1206,6 +883,8 @@
                 d.onclick=()=>scrollToAnnotation(a); list.appendChild(d);
             });
         }
+        
+        // V8.0: 定位捲動邏輯 (置中)
         function scrollToAnnotation(a) {
             const tb = Math.floor((a.page-1)/BATCH_SIZE);
             if(tb !== currentBatchIndex) { if(confirm(`跳轉至 P.${a.page}?`)){ currentBatchIndex=tb; renderCurrentBatch().then(()=>setTimeout(()=>doScroll(a),500)); } }
@@ -1214,16 +893,22 @@
         function doScroll(a) {
             const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`);
             if(el) {
-                el.scrollIntoView({behavior:'smooth'});
+                el.scrollIntoView({behavior:'smooth', block: 'center'});
                 if(a.type==='area') {
+                    // V8.0: 區域高亮需乘上 scale
                     const area = document.createElement('div'); area.className='highlight-area highlight-flash';
-                    area.style.left=a.rect.left+'px'; area.style.top=a.rect.top+'px'; area.style.width=a.rect.width+'px'; area.style.height=a.rect.height+'px';
+                    area.style.left=(a.rect.left * currentScale)+'px'; 
+                    area.style.top=(a.rect.top * currentScale)+'px'; 
+                    area.style.width=(a.rect.width * currentScale)+'px'; 
+                    area.style.height=(a.rect.height * currentScale)+'px';
                     el.appendChild(area); setTimeout(()=>area.remove(),1000);
                 } else { el.classList.add('highlight-flash'); setTimeout(()=>el.classList.remove('highlight-flash'),1000); }
             }
         }
         function jumpAndEdit(id) { const a=annotations.find(x=>x.id===id); if(a) { currentSelection={...a}; scrollToAnnotation(a); setTimeout(()=>openModal(a),600); } }
         function deleteItem(id) { if(confirm("刪除？")){ annotations=annotations.filter(a=>a.id!==id); renderSidebar(); saveToLocal(); renderCurrentBatch(); } }
+        
+        // V8.0: 恢復高亮時乘上 scale
         function restoreHighlights(pageNum, pageDiv) {
             annotations.filter(a=>a.page===pageNum).forEach(ann => {
                 if(ann.type==='text') {
@@ -1232,7 +917,11 @@
                     });
                 } else {
                     const area = document.createElement('div'); area.className='highlight-area'; area.id='area-'+ann.id;
-                    area.style.left=ann.rect.left+'px'; area.style.top=ann.rect.top+'px'; area.style.width=ann.rect.width+'px'; area.style.height=ann.rect.height+'px'; area.style.borderColor=ann.color;
+                    area.style.left=(ann.rect.left * currentScale)+'px'; 
+                    area.style.top=(ann.rect.top * currentScale)+'px'; 
+                    area.style.width=(ann.rect.width * currentScale)+'px'; 
+                    area.style.height=(ann.rect.height * currentScale)+'px'; 
+                    area.style.borderColor=ann.color;
                     area.onclick=(e)=>{e.stopPropagation(); jumpAndEdit(ann.id);}; pageDiv.appendChild(area);
                 }
             });
@@ -1286,14 +975,13 @@
                 if(pdfDoc) { renderCurrentBatch(); alert("專案載入成功！已跳轉至上次進度。"); } else { alert("專案載入成功！請匯入 PDF。"); }
             }; r.readAsText(f); input.value='';
         }
-        
         async function exportExcel() {
             if(annotations.length===0) return alert("無資料");
             const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('RTM');
             let cols = [
                 {header:'ID',key:'rtmId',width:15},
                 {header:'Page',key:'page',width:8},
-                {header:'Title',key:'title',width:30}, // 匯出標題
+                {header:'Title',key:'title',width:30}, 
                 {header:'Category',key:'code',width:20},
                 {header:'Priority',key:'priority'},
                 {header:'Status',key:'status'},
@@ -1315,14 +1003,12 @@
             });
             download(await wb.xlsx.writeBuffer(), `RTM_Report.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         }
-        
         function exportReaderHtml() {
             let h = document.documentElement.outerHTML;
             const d = JSON.stringify({ annotations, presets:tagPresets, customFields, globalMemo });
             h = h.replace(/<script id="embedded-data" type="application\/json">.*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`);
             download(h, `Reader_Report.html`, 'text/html');
         }
-        
         function checkEmbeddedData() {
             const s=document.getElementById('embedded-data');
             if(s && s.textContent.trim()) {
@@ -1330,7 +1016,6 @@
                 isReaderMode=true; document.body.classList.add('mode-read'); renderSidebar(); alert("閱讀模式");
             }
         }
-        
         function download(c, n, t) { const b=new Blob([c],{type:t}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=n; a.click(); }
         function setMode(m) { editMode=m; document.getElementById('modeText').classList.toggle('active', m==='text'); document.getElementById('modeArea').classList.toggle('active', m==='area'); document.querySelectorAll('.pdf-page').forEach(p=>p.style.cursor=m==='text'?'text':'crosshair'); }
         function showLoader(t) { document.getElementById('loader').style.display='flex'; document.getElementById('loaderText').innerText=t; }
