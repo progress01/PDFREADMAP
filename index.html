@@ -182,10 +182,10 @@
         <input type="file" id="projectInput" accept=".json" style="display:none" onchange="handleProjectLoad(this)">
         
         <div style="flex:1"></div> 
-        <button class="primary" onclick="saveProject()">💾 存檔</button>
-        <button class="export" onclick="exportReaderHtml()">📦 打包</button>
-        <button class="info" onclick="openDataPreview()">👀 預覽</button>
-        <button class="danger" onclick="exportExcel()">📊 Excel</button>
+        <button class="primary" onclick="saveProject()">💾 存檔json</button>
+        <button class="export" onclick="exportReaderHtml()">📦 打包html</button>
+        <button class="info" onclick="openDataPreview()">👀 預覽excel</button>
+        <button class="danger" onclick="exportExcel()">📊 下載Excel</button>
 
         <div class="search-box">
             <input type="text" id="globalSearchInput" class="search-input" placeholder="全域搜尋..." onkeydown="if(event.key==='Enter') performGlobalSearch()">
