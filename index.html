@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V10.7 - Maintainable Edition)</title>
+    <title>PDF 閱讀地圖 (Ultimate V11.1 - Maintainable)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <script>
+        // 設定 PDF.js Worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 
     <style>
         /* =========================================
-           1. 全域變數 (CSS Variables)
+           1. CSS 變數與主題設定
            ========================================= */
         :root {
             --bg-color: #525659;
@@ -27,7 +30,7 @@
             --link-color: #007bff;
         }
 
-        /* 深色模式變數 */
+        /* 深色模式覆寫 */
         body.dark-mode {
             --bg-color: #1e1e1e;
             --sidebar-bg: #252526;
@@ -54,9 +57,9 @@
         }
 
         /* =========================================
-           2. 工具列樣式 (Toolbars)
+           2. 工具列樣式
            ========================================= */
-        /* 主工具列 (V8 風格) */
+        /* 主工具列 (V8 復刻版) */
         .toolbar { 
             background: #222; 
             color: white; 
@@ -75,7 +78,7 @@
             background: #333; 
             color: white; 
             padding: 8px 20px;
-            display: none; /* 這裡控制顯示/隱藏 */
+            display: none; /* JS 控制顯示 */
             align-items: center; 
             gap: 15px; 
             border-bottom: 1px solid #555;
@@ -88,7 +91,6 @@
             to { transform: translateY(0); opacity: 1; } 
         }
 
-        /* 閱讀器模式專用工具列 */
         .reader-toolbar { 
             background: #202b38; 
             color: white; 
@@ -101,18 +103,9 @@
             flex-shrink: 0; 
         }
 
-        h1 { 
-            margin: 0; 
-            font-size: 1.1em; 
-            color: #fff; 
-            margin-right: 10px; 
-            display: flex; 
-            align-items: center; 
-            gap: 5px; 
-            user-select: none; 
-        }
+        h1 { margin: 0; font-size: 1.1em; color: #fff; margin-right: 10px; display: flex; align-items: center; gap: 5px; user-select: none; }
         
-        /* 按鈕基礎樣式 */
+        /* 通用按鈕 */
         button { 
             padding: 6px 12px; 
             border: none; 
@@ -129,117 +122,46 @@
             gap: 4px; 
         }
         button:hover { background: #666; transform: translateY(-1px); }
-        button.primary { background: #28a745; } 
-        button.primary:hover { background: #218838; }
-        button.export { background: #17a2b8; } 
-        button.info { background: #138496; }
-        button.warning { background: #ffc107; color: #333; } 
-        button.danger { background: #dc3545; }
-        button.ai-btn { background: #6f42c1; } 
-        button.ai-btn:hover { background: #59359a; }
+        button.primary { background: #28a745; } button.primary:hover { background: #218838; }
+        button.export { background: #17a2b8; } button.info { background: #138496; }
+        button.warning { background: #ffc107; color: #333; } button.danger { background: #dc3545; }
+        button.ai-btn { background: #6f42c1; } button.ai-btn:hover { background: #59359a; }
 
-        /* 模式切換按鈕組 */
-        .mode-switch { 
-            display: flex; 
-            background: #444; 
-            border-radius: 20px; 
-            padding: 2px; 
-            border: 1px solid #555; 
-            margin-right: 10px; 
-        }
-        .mode-btn { 
-            padding: 4px 12px; 
-            border-radius: 15px; 
-            cursor: pointer; 
-            font-size: 0.85em; 
-            color: #ccc; 
-            transition: 0.2s; 
-            user-select: none; 
-        }
-        .mode-btn.active { 
-            background: #007bff; 
-            color: white; 
-            font-weight: bold; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3); 
-        }
+        .zoom-btn { width: 30px; justify-content: center; padding: 6px 0; }
+
+        /* 模式切換 */
+        .mode-switch { display: flex; background: #444; border-radius: 20px; padding: 2px; border: 1px solid #555; margin-right: 10px; }
+        .mode-btn { padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 0.85em; color: #ccc; transition: 0.2s; user-select: none; }
+        .mode-btn.active { background: #007bff; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 
         /* 靜默畫線開關 */
-        .direct-switch { 
-            display: flex; 
-            align-items: center; 
-            cursor: pointer; 
-            user-select: none; 
-            background: #555; 
-            padding: 4px 10px; 
-            border-radius: 15px; 
-            border: 1px solid #777; 
-        }
+        .direct-switch { display: flex; align-items: center; cursor: pointer; user-select: none; background: #555; padding: 4px 10px; border-radius: 15px; border: 1px solid #777; }
         .direct-switch.active { background: #dc3545; border-color: #dc3545; }
         .direct-switch span { font-size: 0.85em; margin-left: 5px; color: #ddd; }
         .direct-switch.active span { color: white; font-weight: bold; }
 
         /* 搜尋框 */
-        .search-box { 
-            display: flex; 
-            align-items: center; 
-            background: white; 
-            border-radius: 4px; 
-            overflow: hidden; 
-            margin-left: auto; 
-        }
+        .search-box { display: flex; align-items: center; background: white; border-radius: 4px; overflow: hidden; margin-left: auto; }
         .search-input { border: none; padding: 6px 10px; outline: none; font-size: 0.9em; width: 140px; color: #333; }
         .search-btn { background: #ffc107; color: #333; border-radius: 0; padding: 6px 10px; }
         .search-btn:hover { background: #e0a800; }
 
         /* =========================================
-           3. 工作區佈局 (Workspace)
+           3. 工作區 (Workspace)
            ========================================= */
-        .workspace { 
-            display: flex; 
-            flex: 1; 
-            overflow: hidden; 
-            position: relative; 
-            background: var(--bg-color); 
-        }
-        /* 左側側邊欄模式 */
+        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; background: var(--bg-color); }
         .workspace.sidebar-left { flex-direction: row-reverse; }
         .workspace.sidebar-left .sidebar { border-left: none; border-right: 1px solid #ccc; }
 
-        #viewerContainer { 
-            flex: 1; 
-            overflow-y: auto; 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            padding-bottom: 120px; 
-            user-select: none; 
-        }
+        #viewerContainer { flex: 1; overflow-y: auto; position: relative; display: flex; flex-direction: column; align-items: center; padding: 20px; padding-bottom: 120px; user-select: none; }
         
-        body.grabbing-mode #viewerContainer, 
-        body.grabbing-mode .pdf-page { cursor: grab !important; }
+        body.grabbing-mode #viewerContainer, body.grabbing-mode .pdf-page { cursor: grab !important; }
         body.grabbing-mode #viewerContainer:active { cursor: grabbing !important; }
 
-        .pdf-page { 
-            position: relative; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-            background: white; 
-            cursor: crosshair; 
-            transition: filter 0.3s; 
-        }
-        /* 深色模式下的 PDF 反轉 */
+        .pdf-page { position: relative; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); background: white; cursor: crosshair; transition: filter 0.3s; }
         body.dark-mode .pdf-page { filter: invert(0.9) hue-rotate(180deg); }
 
-        /* 選取框與高亮 */
-        .selection-marquee { 
-            position: absolute; 
-            border: 2px dashed #007bff; 
-            background-color: rgba(0, 123, 255, 0.2); 
-            pointer-events: none; 
-            z-index: 100; 
-        }
+        .selection-marquee { position: absolute; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); pointer-events: none; z-index: 100; }
         .textLayer { opacity: 1; line-height: 1.0; }
         .textLayer span { color: transparent; position: absolute; white-space: pre; cursor: crosshair; }
         
@@ -252,71 +174,43 @@
         /* =========================================
            4. 側邊欄 (Sidebar)
            ========================================= */
-        .sidebar { 
-            width: 320px; 
-            background: var(--sidebar-bg); 
-            border-left: 1px solid #ccc; 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 90; 
-            color: var(--sidebar-text);
-            transition: background 0.3s;
-        }
+        .sidebar { width: 320px; background: var(--sidebar-bg); border-left: 1px solid #ccc; display: flex; flex-direction: column; z-index: 90; color: var(--sidebar-text); transition: background 0.3s; }
         
-        /* 頁籤 (隱藏式) */
+        /* 頁籤 (預設隱藏) */
         .sidebar-tabs { display: none; background: #ddd; border-bottom: 1px solid #bbb; }
         body.dark-mode .sidebar-tabs { background: #333; border-bottom: 1px solid #555; }
         .sidebar-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-size: 0.9em; font-weight: bold; color: #666; user-select: none; }
+        body.dark-mode .sidebar-tab { color: #aaa; }
         .sidebar-tab.active { background: var(--sidebar-bg); color: var(--sidebar-text); border-top: 3px solid #007bff; }
 
         .sidebar-header { padding: 10px; background: var(--sidebar-bg); border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
         body.dark-mode .sidebar-header { border-bottom: 1px solid #444; }
 
-        /* 側邊欄搜尋框 (隱藏式) */
-        #sidebarSearchInput {
-            display: none; 
-            width: 100%; 
-            padding: 6px; 
-            font-size: 0.9em; 
-            margin-top: 5px; 
-            border-radius: 4px; 
-            border: 1px solid #ccc;
-            background: var(--input-bg); 
-            color: var(--input-text); 
-            box-sizing: border-box;
-        }
-
+        /* 側邊欄搜尋 (預設隱藏) */
+        #sidebarSearchInput { display: none; width: 100%; padding: 6px; font-size: 0.9em; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; background: var(--input-bg); color: var(--input-text); box-sizing: border-box; }
+        
         .sidebar-filter { width: 100%; padding: 5px; font-size: 0.9em; border: 1px solid #ccc; border-radius: 4px; background: var(--input-bg); color: var(--input-text); }
         .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
         
-        /* 列表項目 */
-        .list-item { 
-            background: var(--item-bg); 
-            padding: 10px; 
-            margin-bottom: 8px; 
-            border-radius: 8px; 
-            border: 1px solid var(--item-border); 
-            cursor: pointer; 
-            border-left: 5px solid #ccc; 
-            transition: 0.2s; 
-            position: relative; 
-            padding-right: 50px; 
-        }
+        .list-item { background: var(--item-bg); padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--item-border); cursor: pointer; border-left: 5px solid #ccc; transition: 0.2s; position: relative; padding-right: 50px; }
         .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fafafa; }
         .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
         .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
         .icon-btn:hover { background: #eee; color: #000; }
         .tag-badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 0.75em; color: white; background: #999; margin-right: 5px; vertical-align: middle; }
 
-        .bookmark-item { 
-            background: var(--item-bg); padding: 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid var(--item-border); 
-            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
-        }
+        .bookmark-item { background: var(--item-bg); padding: 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid var(--item-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         body.dark-mode .bookmark-item:hover { background: #444; }
+        
+        /* 目錄項目樣式 */
+        .outline-item { cursor: pointer; padding: 6px 5px; font-size: 0.9em; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        body.dark-mode .outline-item { border-bottom: 1px solid #444; }
+        .outline-item:hover { background-color: rgba(0, 123, 255, 0.1); color: #007bff; }
+
         .memo-link { color: var(--link-color); text-decoration: underline; cursor: pointer; font-weight: bold; }
 
         /* =========================================
-           5. 視窗元件 (Modals & Search)
+           5. 視窗與懸浮元件
            ========================================= */
         #searchPanel { position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; }
         .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color: #333; }
@@ -326,25 +220,13 @@
         .search-tag { background: #e9ecef; color: #333; border: 1px solid #ced4da; font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor: pointer; }
         .search-tag:hover { background: #007bff; color: white; border-color: #007bff; }
 
-        .floating-nav { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; 
-            display: flex; gap: 10px; align-items: center; color: white; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; 
-        }
-        .zoom-btn { width: 30px; justify-content: center; padding: 6px 0; }
-
+        .floating-nav { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; display: flex; gap: 10px; align-items: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; }
+        
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 3000; pointer-events: none; }
-        .modal-card { 
-            position: absolute; background: var(--modal-bg); color: var(--text-color); width: 450px; padding: 20px; 
-            border-radius: 12px; display: flex; flex-direction: column; gap: 12px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; 
-            pointer-events: auto; border: 1px solid #999;
-        }
+        .modal-card { position: absolute; background: var(--modal-bg); color: var(--text-color); width: 450px; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; pointer-events: auto; border: 1px solid #999; }
         .modal-drag-handle { cursor: move; user-select: none; }
         
         input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; background: var(--input-bg); color: var(--input-text); }
-        
         .preview-box { background: #f0f0f0; padding: 10px; font-size: 0.9em; max-height: 150px; overflow-y: auto; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; resize: vertical; outline: none; color:#333; }
         .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; flex-wrap: wrap; }
         body.dark-mode .memo-toolbar { background: #444; }
@@ -376,7 +258,7 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ 閱讀地圖 <span style="font-size:0.5em; opacity:0.6;">V10.6</span></h1>
+        <h1>🛠️ V11.1</h1>
         
         <div class="mode-switch">
             <div class="mode-btn active" id="modeText" onclick="setMode('text')">📝 抓文字</div>
@@ -433,14 +315,20 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>經典介面，強大核心 (Classic Look, Power Core)</p>
-                <p style="font-size:0.8em; color:#666;">(點擊上方「🔨 工具箱」可開啟 AI、深色模式與進階功能)</p>
+                <p>V11.1 Maintainable Edition</p>
+                <p style="font-size:0.8em; color:#666;">(點擊上方「🔨 工具箱」可開啟 AI、深色模式、目錄等功能)</p>
             </div>
             
             <div id="searchPanel">
                 <div class="search-header">
                     <span>⚡ 速查速標</span>
                     <span style="cursor:pointer; font-size:1.2em;" onclick="closeSearch()">×</span>
+                </div>
+                <div style="padding:10px; background:#f8f9fa; border-bottom:1px solid #eee; display:flex; gap:5px; flex-wrap:wrap;">
+                    <button class="search-tag" onclick="searchKeyword('交付')">交付</button>
+                    <button class="search-tag" onclick="searchKeyword('驗收')">驗收</button>
+                    <button class="search-tag" onclick="searchKeyword('罰則')">罰則</button>
+                    <button class="search-tag" onclick="searchKeyword('資安')">資安</button>
                 </div>
                 <div class="search-results" id="searchResultsList"></div>
             </div>
@@ -449,6 +337,7 @@
         <div class="sidebar">
             <div class="sidebar-tabs" id="sidebarTabs">
                 <div class="sidebar-tab active" id="tabIndex" onclick="switchSidebarTab('index')">📝 索引</div>
+                <div class="sidebar-tab" id="tabOutline" onclick="switchSidebarTab('outline')">📑 目錄</div>
                 <div class="sidebar-tab" id="tabBookmark" onclick="switchSidebarTab('bookmark')">🔖 書籤</div>
             </div>
 
@@ -468,6 +357,13 @@
                     </select>
                 </div>
                 <div class="sidebar-list" id="sidebarList"></div>
+            </div>
+
+            <div id="panelOutline" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+                <div class="sidebar-header" style="background:#eee; font-weight:bold; font-size:0.9em; color:#555;">PDF 原生目錄</div>
+                <div class="sidebar-list" id="outlineList">
+                    <div style="text-align:center; padding:20px; color:#999;">尚未載入 PDF 或 無目錄</div>
+                </div>
             </div>
 
             <div id="panelBookmark" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
@@ -565,9 +461,14 @@
     <div class="modal" id="globalMemoModal">
         <div class="modal-card">
             <h3 style="margin:0; padding-bottom:10px;">💡 全局靈感筆記</h3>
-            <div class="memo-toolbar"><button class="memo-btn" onclick="globalMemoExec('hilite')">🖊️</button><button class="memo-btn" onclick="globalMemoExec('checkbox')">☑️</button></div>
+            <div class="memo-toolbar">
+                <button class="memo-btn" onclick="globalMemoExec('hilite')">🖊️</button>
+                <button class="memo-btn" onclick="globalMemoExec('checkbox')">☑️</button>
+            </div>
             <div id="globalMemoEditor" class="rich-memo" style="flex:1;" contenteditable="true"></div>
-            <div style="text-align:right; margin-top:20px;"><button class="primary" onclick="saveGlobalMemo()">儲存並關閉</button></div>
+            <div style="text-align:right; margin-top:20px;">
+                <button class="primary" onclick="saveGlobalMemo()">儲存並關閉</button>
+            </div>
         </div>
     </div>
 
@@ -576,7 +477,10 @@
             <h3 style="margin:0;">⚙️ 系統設定</h3>
             <div style="margin-bottom:10px; display:flex; justify-content:space-between;">
                 <span>樣板管理</span>
-                <div><button class="info" onclick="saveAsTemplate()">存為預設</button> <button class="warning" onclick="loadFromTemplate()">載入樣板</button></div>
+                <div>
+                    <button class="info" onclick="saveAsTemplate()">存為預設</button> 
+                    <button class="warning" onclick="loadFromTemplate()">載入樣板</button>
+                </div>
             </div>
             <div style="background:#f8f9fa; padding:10px; margin-bottom:10px; display:flex; gap:5px;">
                 <input type="text" id="newTagName" placeholder="名稱..." style="flex:1">
@@ -585,15 +489,22 @@
             </div>
             <div id="presetList" style="max-height:100px; overflow-y:auto; border:1px solid #eee; padding:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
             <div id="customFieldList" style="margin-top:10px; border:1px solid #eee; padding:10px;"></div>
-            <div style="margin-top:20px; text-align:right;"><button class="danger" onclick="resetAllData()">⚠️ 重置系統</button> <button onclick="document.getElementById('settingsModal').style.display='none'">關閉</button></div>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="danger" onclick="resetAllData()">⚠️ 重置系統</button> 
+                <button onclick="document.getElementById('settingsModal').style.display='none'">關閉</button>
+            </div>
         </div>
     </div>
 
     <div class="modal" id="previewModal">
         <div class="modal-card">
             <h3 style="margin:0; padding-bottom:10px;">👀 數據預覽</h3>
-            <div class="preview-table-container"><div id="previewContent"></div></div>
-            <div style="text-align:right; margin-top:20px;"><button onclick="document.getElementById('previewModal').style.display='none'">關閉</button></div>
+            <div class="preview-table-container">
+                <div id="previewContent"></div>
+            </div>
+            <div style="text-align:right; margin-top:20px;">
+                <button onclick="document.getElementById('previewModal').style.display='none'">關閉</button>
+            </div>
         </div>
     </div>
 
@@ -622,51 +533,78 @@
         let activeMemoId = '';
         let isSpacePressed = false;
         
-        // 滑鼠拖曳變數 (V10.5 Fix)
-        let isMouseDragging = false, dragStartX = 0, dragStartY = 0, currentMarquee = null, activePageDiv = null, activePageNum = 0;
+        // 滑鼠拖曳變數 (全域宣告避免失效)
+        let isMouseDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let currentMarquee = null;
+        let activePageDiv = null;
+        let activePageNum = 0;
 
-        const AUTOSAVE_KEY = 'pdf_ult_v10_classic';
-        const TEMPLATE_KEY = 'pdf_ult_v10_tpl';
+        const AUTOSAVE_KEY = 'pdf_ult_v11';
+        const TEMPLATE_KEY = 'pdf_ult_v11_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
         // =========================================
-        // 2. 初始化 (Initialization)
+        // 2. 初始化與事件監聽 (Initialization)
         // =========================================
         window.onload = function() {
+            // 載入預設資料
             loadFromTemplate(true); 
             checkEmbeddedData(); 
             if(!isReaderMode) checkAutoSave();
             
-            // 載入 UI 狀態 (若之前開啟過，保持狀態)
+            // 恢復 UI 狀態 (記憶功能)
             if(localStorage.getItem('isDarkMode') === 'true') document.body.classList.add('dark-mode');
             if(localStorage.getItem('isSidebarLeft') === 'true') document.getElementById('workspace').classList.add('sidebar-left');
             
-            // 鍵盤事件
+            // 鍵盤事件綁定
             window.addEventListener('keydown', (e) => {
-                if(e.key === 'Escape') document.querySelectorAll('.modal,#searchPanel').forEach(el => el.style.display = 'none');
-                if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && document.getElementById('editorModal').style.display === 'flex') confirmAnnotation();
+                // ESC: 關閉所有視窗
+                if(e.key === 'Escape') {
+                    document.querySelectorAll('.modal,#searchPanel').forEach(el => el.style.display = 'none');
+                }
+                // Ctrl+Enter: 確認編輯
+                if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && document.getElementById('editorModal').style.display === 'flex') {
+                    confirmAnnotation();
+                }
+                // Space: 平移模式 (排除輸入框)
                 if(e.code === 'Space' && !e.repeat && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && !document.activeElement.isContentEditable) { 
-                    isSpacePressed = true; document.body.classList.add('grabbing-mode'); e.preventDefault(); 
+                    isSpacePressed = true; 
+                    document.body.classList.add('grabbing-mode'); 
+                    e.preventDefault(); 
                 }
             });
-            window.addEventListener('keyup', (e) => { if(e.code === 'Space') { isSpacePressed = false; document.body.classList.remove('grabbing-mode'); }});
 
-            // 全域滑鼠監聽 (修正畫線)
+            window.addEventListener('keyup', (e) => { 
+                if(e.code === 'Space') { 
+                    isSpacePressed = false; 
+                    document.body.classList.remove('grabbing-mode'); 
+                }
+            });
+
+            // 畫線與拖曳的全域監聽 (V10.5 修復的核心)
             window.addEventListener('mousemove', handleGlobalMouseMove);
             window.addEventListener('mouseup', handleGlobalMouseUp);
 
+            // 圖片上傳監聽
             document.getElementById('imageUploadInput').addEventListener('change', handleImageInsert);
+            
+            // 視窗拖曳初始化
             makeDraggable(document.getElementById("editorCard"), document.getElementById("modalTitle"));
         };
 
         // =========================================
-        // 3. UI 切換 (工具箱邏輯)
+        // 3. UI 控制邏輯 (UI Logic)
         // =========================================
+        
+        // 展開/收合進階功能 (工具箱)
         function toggleAdvancedUI() {
             const bar = document.getElementById('advancedToolbar');
             const tabs = document.getElementById('sidebarTabs');
             const search = document.getElementById('sidebarSearchInput');
             
+            // 判斷目前狀態
             const isHidden = bar.style.display === 'none' || bar.style.display === '';
             
             if (isHidden) {
@@ -677,25 +615,43 @@
                 bar.style.display = 'none';
                 tabs.style.display = 'none';
                 search.style.display = 'none';
-                // 關閉時若在書籤頁，切回索引，避免看不見
+                // 關閉時若在特殊頁籤，強制切回索引，避免內容消失
                 switchSidebarTab('index');
             }
         }
 
-        function toggleDarkMode(){ document.body.classList.toggle('dark-mode'); localStorage.setItem('isDarkMode', document.body.classList.contains('dark-mode')); }
-        function toggleSidebarLayout(){ document.getElementById('workspace').classList.toggle('sidebar-left'); localStorage.setItem('isSidebarLeft', document.getElementById('workspace').classList.contains('sidebar-left')); }
-        function toggleDirectMode(){ isDirectMode = !isDirectMode; document.getElementById('directSwitch').classList.toggle('active', isDirectMode); }
+        function toggleDarkMode(){ 
+            document.body.classList.toggle('dark-mode'); 
+            localStorage.setItem('isDarkMode', document.body.classList.contains('dark-mode')); 
+        }
+
+        function toggleSidebarLayout(){ 
+            document.getElementById('workspace').classList.toggle('sidebar-left'); 
+            localStorage.setItem('isSidebarLeft', document.getElementById('workspace').classList.contains('sidebar-left')); 
+        }
+
+        function toggleDirectMode(){ 
+            isDirectMode = !isDirectMode; 
+            document.getElementById('directSwitch').classList.toggle('active', isDirectMode); 
+        }
 
         function switchSidebarTab(t){ 
+            // 切換頁籤樣式
             document.getElementById('tabIndex').classList.toggle('active', t==='index'); 
+            document.getElementById('tabOutline').classList.toggle('active', t==='outline');
             document.getElementById('tabBookmark').classList.toggle('active', t==='bookmark'); 
+            
+            // 切換面板顯示
             document.getElementById('panelIndex').style.display = t==='index'?'flex':'none'; 
+            document.getElementById('panelOutline').style.display = t==='outline'?'flex':'none';
             document.getElementById('panelBookmark').style.display = t==='bookmark'?'flex':'none'; 
+            
+            // 若切換到書籤，重新渲染列表
             if(t==='bookmark') renderBookmarks(); 
         }
 
         // =========================================
-        // 4. 畫線與選取 (Selection Logic - Fixed)
+        // 4. 畫線與選取核心 (Selection Logic)
         // =========================================
         function enableBoxSelection(pageDiv, pageNum) {
             pageDiv.addEventListener('mousedown', (e) => {
@@ -750,6 +706,7 @@
                 currentMarquee.remove();
                 currentMarquee = null;
                 
+                // 若選取範圍夠大，觸發處理
                 if (width > 5 && height > 5 && activePageDiv) {
                     processSelection(activePageNum, {left, top, width, height}, activePageDiv);
                 }
@@ -758,14 +715,34 @@
         }
 
         function processSelection(p, r, div){
-            const nr = {left: r.left/currentScale, top: r.top/currentScale, width: r.width/currentScale, height: r.height/currentScale};
+            // 正規化座標 (處理縮放)
+            const nr = {
+                left: r.left/currentScale, 
+                top: r.top/currentScale, 
+                width: r.width/currentScale, 
+                height: r.height/currentScale
+            };
+            
             if(editMode === 'text'){
+                // 文字模式：抓取涵蓋的 span
                 let txt = "", s = div.querySelectorAll('.textLayer span'), hs = []; 
-                s.forEach(el => { if(!(el.offsetLeft+el.offsetWidth < r.left || el.offsetLeft > r.left+r.width || el.offsetTop+el.offsetHeight < r.top || el.offsetTop > r.top+r.height)) hs.push(el); });
-                hs.sort((a,b) => Math.abs(a.offsetTop - b.offsetTop) < 10 ? a.offsetLeft - b.offsetLeft : a.offsetTop - b.offsetTop).forEach(e => txt += e.innerText+" ");
-                if(txt.trim()) { currentSelection = {id: null, type: 'text', page: p, text: txt.trim(), rect: nr}; if(isDirectMode) quickSave(); else openModal(); }
+                s.forEach(el => { 
+                    if(!(el.offsetLeft+el.offsetWidth < r.left || el.offsetLeft > r.left+r.width || el.offsetTop+el.offsetHeight < r.top || el.offsetTop > r.top+r.height)) 
+                        hs.push(el); 
+                });
+                // 排序並組合文字
+                hs.sort((a,b) => Math.abs(a.offsetTop - b.offsetTop) < 10 ? a.offsetLeft - b.offsetLeft : a.offsetTop - b.offsetTop)
+                  .forEach(e => txt += e.innerText+" ");
+                
+                if(txt.trim()) { 
+                    currentSelection = {id: null, type: 'text', page: p, text: txt.trim(), rect: nr}; 
+                    if(isDirectMode) quickSave(); else openModal(); 
+                }
             } else {
-                const c = document.createElement('canvas'); c.width = r.width; c.height = r.height; 
+                // 圖片模式：Canvas 截圖
+                const c = document.createElement('canvas'); 
+                c.width = r.width; 
+                c.height = r.height; 
                 c.getContext('2d').drawImage(div.querySelector('canvas'), r.left, r.top, r.width, r.height, 0, 0, r.width, r.height);
                 currentSelection = {id: null, type: 'area', page: p, text: '[圖片]', rect: nr, imageData: c.toDataURL()}; 
                 if(isDirectMode) quickSave(); else openModal();
@@ -773,42 +750,81 @@
         }
 
         // =========================================
-        // 5. 標註與功能核心
+        // 5. 標註資料管理 (Data Management)
         // =========================================
-        function genId(){ let m = 0; annotations.forEach(a => { const v = (a.rtmId || "").match(/^REQ-(\d+)$/); if(v) m = Math.max(m, parseInt(v[1])); }); return `REQ-${String(m + 1).padStart(4, '0')}`; }
+        function genId(){ 
+            let m = 0; 
+            annotations.forEach(a => { 
+                const v = (a.rtmId || "").match(/^REQ-(\d+)$/); 
+                if(v) m = Math.max(m, parseInt(v[1])); 
+            }); 
+            return `REQ-${String(m + 1).padStart(4, '0')}`; 
+        }
         
         function quickSave(){ 
             const newId = Date.now().toString();
-            annotations.push({id: newId, ...currentSelection, rtmId: genId(), title: currentSelection.text.substring(0, 10), code: lastUsedSettings.code, color: lastUsedSettings.color, priority: 'Medium', status: 'New', memo: '', timestamp: new Date().toISOString()}); 
+            annotations.push({
+                id: newId, 
+                ...currentSelection, 
+                rtmId: genId(), 
+                title: currentSelection.text.substring(0, 10), 
+                code: lastUsedSettings.code, 
+                color: lastUsedSettings.color, 
+                priority: 'Medium', status: 'New', memo: '', 
+                timestamp: new Date().toISOString()
+            }); 
             renderSidebar(); saveToLocal(); renderCurrentBatch(); 
         }
 
         function openModal(ex = null){ 
-            const m = document.getElementById('editorModal'), c = document.getElementById('editorCard'); c.style.top = "50px"; 
-            renderCustomFields(ex ? ex.customData : {}); renderQuickTags();
+            const m = document.getElementById('editorModal'), c = document.getElementById('editorCard'); 
+            c.style.top = "50px"; 
+            
+            renderCustomFields(ex ? ex.customData : {}); 
+            renderQuickTags();
+            
+            // 填入資料
             document.getElementById('rtmId').value = ex ? ex.rtmId : genId(); 
             document.getElementById('rtmTitle').value = ex ? ex.title || ex.code : ''; 
             document.getElementById('codeName').value = ex ? ex.code : lastUsedSettings.code; 
             document.getElementById('codeColor').value = ex ? ex.color : lastUsedSettings.color;
             document.getElementById('codeMemo').innerHTML = ex ? ex.memo : ''; 
             currentSelection.id = ex ? ex.id : null;
+            
+            // 預覽內容
             document.getElementById('quotePreview').innerHTML = currentSelection.type === 'area' ? `<img src="${currentSelection.imageData}">` : currentSelection.text;
+            
             m.style.display = 'flex'; 
         }
 
         function confirmAnnotation(){
-            const cd = {}; document.querySelectorAll('#customFieldsContainer input').forEach(i => cd[i.dataset.key] = i.value);
+            const cd = {}; 
+            document.querySelectorAll('#customFieldsContainer input').forEach(i => cd[i.dataset.key] = i.value);
+            
             const nd = {
-                type: currentSelection.type, page: currentSelection.page, 
+                type: currentSelection.type, 
+                page: currentSelection.page, 
                 text: currentSelection.type === 'text' ? document.getElementById('quotePreview').innerText : currentSelection.text, 
-                rect: currentSelection.rect, imageData: currentSelection.imageData, 
-                rtmId: document.getElementById('rtmId').value, title: document.getElementById('rtmTitle').value, 
-                code: document.getElementById('codeName').value, color: document.getElementById('codeColor').value, 
-                priority: document.getElementById('rtmPriority').value, status: document.getElementById('rtmStatus').value, 
-                memo: document.getElementById('codeMemo').innerHTML, customData: cd, timestamp: new Date().toISOString()
+                rect: currentSelection.rect, 
+                imageData: currentSelection.imageData, 
+                rtmId: document.getElementById('rtmId').value, 
+                title: document.getElementById('rtmTitle').value, 
+                code: document.getElementById('codeName').value, 
+                color: document.getElementById('codeColor').value, 
+                priority: document.getElementById('rtmPriority').value, 
+                status: document.getElementById('rtmStatus').value, 
+                memo: document.getElementById('codeMemo').innerHTML, 
+                customData: cd, 
+                timestamp: new Date().toISOString()
             };
             lastUsedSettings = {code: nd.code, color: nd.color};
-            if(currentSelection.id){ const i = annotations.findIndex(a => a.id === currentSelection.id); annotations[i] = {...annotations[i], ...nd}; } else { annotations.push({id: Date.now().toString(), ...nd}); }
+            
+            if(currentSelection.id){ 
+                const i = annotations.findIndex(a => a.id === currentSelection.id); 
+                annotations[i] = {...annotations[i], ...nd}; 
+            } else {
+                annotations.push({id: Date.now().toString(), ...nd});
+            }
             renderSidebar(); saveToLocal(); closeModal(); renderCurrentBatch();
         }
 
@@ -816,19 +832,29 @@
             annotations.filter(a => a.page === p).forEach(a => {
                 if(a.type === 'text') {
                     div.querySelectorAll('.textLayer span').forEach(s => { 
-                        if(s.innerText.length > 1 && a.text.includes(s.innerText)){ s.classList.add('highlight-text'); s.style.borderBottomColor = a.color; s.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); } } 
+                        if(s.innerText.length > 1 && a.text.includes(s.innerText)){ 
+                            s.classList.add('highlight-text'); 
+                            s.style.borderBottomColor = a.color; 
+                            s.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); } 
+                        } 
                     });
                 } else { 
-                    const d = document.createElement('div'); d.className = 'highlight-area'; d.id = 'area-' + a.id; 
-                    d.style.left = (a.rect.left * currentScale) + 'px'; d.style.top = (a.rect.top * currentScale) + 'px'; 
-                    d.style.width = (a.rect.width * currentScale) + 'px'; d.style.height = (a.rect.height * currentScale) + 'px'; 
-                    d.style.borderColor = a.color; d.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); }; div.appendChild(d); 
+                    const d = document.createElement('div'); 
+                    d.className = 'highlight-area'; 
+                    d.id = 'area-' + a.id; 
+                    d.style.left = (a.rect.left * currentScale) + 'px'; 
+                    d.style.top = (a.rect.top * currentScale) + 'px'; 
+                    d.style.width = (a.rect.width * currentScale) + 'px'; 
+                    d.style.height = (a.rect.height * currentScale) + 'px'; 
+                    d.style.borderColor = a.color; 
+                    d.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); }; 
+                    div.appendChild(d); 
                 }
             });
         }
 
         // =========================================
-        // 6. 側邊欄與連結 (Wiki Links)
+        // 6. 側邊欄與連結功能
         // =========================================
         function renderSidebar() {
             const list = document.getElementById('sidebarList'); list.innerHTML = '';
@@ -841,7 +867,11 @@
                 if(filterVal === 'Pending' && a.status !== 'Pending') return false;
                 if(filterVal === 'Image' && a.type !== 'area') return false;
                 if(searchVal) {
-                    const match = (a.title && a.title.toLowerCase().includes(searchVal)) || (a.code && a.code.toLowerCase().includes(searchVal)) || (a.rtmId && a.rtmId.toLowerCase().includes(searchVal)) || (a.text && a.text.toLowerCase().includes(searchVal)) || (a.memo && a.memo.toLowerCase().includes(searchVal));
+                    const match = (a.title && a.title.toLowerCase().includes(searchVal)) || 
+                                  (a.code && a.code.toLowerCase().includes(searchVal)) || 
+                                  (a.rtmId && a.rtmId.toLowerCase().includes(searchVal)) || 
+                                  (a.text && a.text.toLowerCase().includes(searchVal)) || 
+                                  (a.memo && a.memo.toLowerCase().includes(searchVal));
                     if(!match) return false;
                 }
                 return true;
@@ -849,22 +879,35 @@
             filtered.sort((a,b) => a.page - b.page);
 
             filtered.forEach(a => {
-                const d = document.createElement('div'); d.className = 'list-item'; d.style.borderLeftColor = a.color;
+                const d = document.createElement('div'); 
+                d.className = 'list-item'; 
+                d.style.borderLeftColor = a.color;
                 const displayMemo = formatMemoLinks(a.memo);
                 d.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;"><span>P.${a.page} ${a.type==='area'?'🖼️':'📝'}</span><span>${a.priority}</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;">
+                        <span>P.${a.page} ${a.type==='area'?'🖼️':'📝'}</span><span>${a.priority}</span>
+                    </div>
                     <div style="font-weight:bold;margin:4px 0;font-size:1em;">${a.title||a.code}</div>
                     <div style="margin-bottom:4px;"><span class="tag-badge" style="background:${a.color}">${a.code}</span></div>
                     <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${a.rtmId ? `<b>[${a.rtmId}]</b> ` : ''}${a.text}</div>
                     <div class="memo-content" style="margin-top:5px;border-top:1px dashed #eee;padding-top:5px;font-size:0.85em;color:#444;">${displayMemo}</div>
-                    <div class="item-actions"><button class="icon-btn" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button><button class="icon-btn" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button></div>`;
+                    <div class="item-actions">
+                        <button class="icon-btn" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
+                        <button class="icon-btn" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
+                    </div>`;
                 d.onclick = () => scrollToAnnotation(a);
                 d.querySelectorAll('img').forEach(img => { img.onclick = (e) => { e.stopPropagation(); showLightbox(img.src); }});
                 list.appendChild(d);
             });
         }
 
-        function formatMemoLinks(html) { if(!html) return ""; return html.replace(/\[\[(.*?)\]\]/g, (match, ref) => { return `<span class="memo-link" onclick="event.stopPropagation(); handleWikiLink('${ref}')">${match}</span>`; }); }
+        // Wiki Link 解析
+        function formatMemoLinks(html) { 
+            if(!html) return ""; 
+            return html.replace(/\[\[(.*?)\]\]/g, (match, ref) => { 
+                return `<span class="memo-link" onclick="event.stopPropagation(); handleWikiLink('${ref}')">${match}</span>`; 
+            }); 
+        }
         
         function handleWikiLink(ref) {
             const target = annotations.find(a => a.rtmId === ref || a.title === ref || a.code === ref);
@@ -872,12 +915,15 @@
                 scrollToAnnotation(target);
                 setTimeout(() => {
                    const el = document.getElementById('area-'+target.id) || document.querySelector(`.pdf-page[data-page-number="${target.page}"]`);
-                   if(el) { const originalOutline = el.style.outline; el.style.outline = "5px solid cyan"; setTimeout(() => el.style.outline = originalOutline, 1500); }
+                   if(el) { 
+                       const originalOutline = el.style.outline; 
+                       el.style.outline = "5px solid cyan"; 
+                       setTimeout(() => el.style.outline = originalOutline, 1500); 
+                   }
                 }, 800);
             } else {
-                // 如果找不到，幫忙搜尋
-                if(confirm(`找不到 "${ref}"。是否搜尋？`)) { 
-                    toggleAdvancedUI(); // 確保 UI 是展開的
+                if(confirm(`找不到 "${ref}"。搜尋？`)) { 
+                    toggleAdvancedUI(); 
                     document.getElementById('sidebarSearchInput').value = ref; 
                     renderSidebar(); 
                     switchSidebarTab('index'); 
@@ -898,13 +944,19 @@
             updateAIPromptPreview();
             document.getElementById('aiModal').style.display = 'flex';
         }
-        function selectAllForAI() { document.querySelectorAll('#aiSelectionList input').forEach(c => c.checked = true); updateAIPromptPreview(); }
+
+        function selectAllForAI() { 
+            document.querySelectorAll('#aiSelectionList input').forEach(c => c.checked = true); 
+            updateAIPromptPreview(); 
+        }
+
         function updateAIPromptPreview() {
             const tmpl = document.getElementById('aiTemplate').value;
             const ids = Array.from(document.querySelectorAll('#aiSelectionList input:checked')).map(c => c.value);
             const selAnns = annotations.filter(a => ids.includes(a.id));
             let context = selAnns.map(a => `【ID: ${a.rtmId} | 標題: ${a.title}】\n內容: ${a.text}\n筆記: ${a.memo.replace(/<[^>]+>/g,'')}`).join('\n\n----------------\n\n');
             if(!context) context = "(請先勾選上方的資料)";
+            
             let prompt = "";
             switch(tmpl) {
                 case 'summary': prompt = "請幫我總結以下標註內容，歸納出重點摘要：\n\n"; break;
@@ -915,34 +967,203 @@
             }
             document.getElementById('aiOutput').value = prompt + context;
         }
+
         function copyAIToClipboard() {
             const txt = document.getElementById('aiOutput'); txt.select(); document.execCommand('copy');
             alert("✅ Prompt 已複製！請切換到 ChatGPT/Claude 貼上。");
         }
 
-        async function handlePdfUpload(i){ const f=i.files[0]; if(!f) return; showLoader("解析中..."); try { pdfDoc = await pdfjsLib.getDocument(await f.arrayBuffer()).promise; calculateBatches(); document.getElementById('placeholder').style.display='none'; document.getElementById('bottomNav').style.display='flex'; await renderCurrentBatch(); } catch(e) { alert("讀取失敗"); console.error(e); } finally { hideLoader(); i.value=''; } }
-        function calculateBatches(){ totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE); const s = document.getElementById('jumpSelect'); s.innerHTML = ''; for(let i=0; i<totalBatches; i++) s.add(new Option(`第 ${i*BATCH_SIZE+1}-${Math.min((i+1)*BATCH_SIZE, pdfDoc.numPages)} 頁`, i)); updateNav(); }
-        async function renderCurrentBatch(){ if(!pdfDoc) return; showLoader("載入中..."); document.querySelectorAll('.pdf-page').forEach(p => p.remove()); document.getElementById('jumpSelect').value = currentBatchIndex; updateNav(); for(let i = (currentBatchIndex * BATCH_SIZE) + 1; i <= Math.min((currentBatchIndex + 1) * BATCH_SIZE, pdfDoc.numPages); i++) await renderPage(i); hideLoader(); }
-        async function renderPage(n){ const p = await pdfDoc.getPage(n), v = p.getViewport({scale: currentScale}); const d = document.createElement('div'); d.className = 'pdf-page'; d.style.width = v.width+'px'; d.style.height = v.height+'px'; d.dataset.pageNumber = n; d.style.cursor = editMode==='text'?'text':'crosshair'; const c = document.createElement('canvas'); c.width = v.width; c.height = v.height; const t = document.createElement('div'); t.className = 'textLayer'; t.style.width = v.width+'px'; t.style.height = v.height+'px'; d.append(c, t); document.getElementById('viewerContainer').appendChild(d); await p.render({canvasContext: c.getContext('2d'), viewport: v}).promise; pdfjsLib.renderTextLayer({textContent: await p.getTextContent(), container: t, viewport: v, textDivs: []}); if(!isReaderMode) enableBoxSelection(d, n); restoreHighlights(n, d); }
+        async function handlePdfUpload(i){ 
+            const f=i.files[0]; if(!f) return; 
+            showLoader("解析中..."); 
+            try { 
+                pdfDoc = await pdfjsLib.getDocument(await f.arrayBuffer()).promise; 
+                calculateBatches(); 
+                document.getElementById('placeholder').style.display='none'; 
+                document.getElementById('bottomNav').style.display='flex'; 
+                
+                // V11: 載入目錄
+                loadPdfOutline();
+                
+                await renderCurrentBatch(); 
+            } catch(e) { 
+                alert("讀取失敗"); console.error(e); 
+            } finally { 
+                hideLoader(); i.value=''; 
+            } 
+        }
+
+        // V11: 載入目錄
+        async function loadPdfOutline() {
+            const outline = await pdfDoc.getOutline();
+            const container = document.getElementById('outlineList');
+            container.innerHTML = '';
+            if(!outline || outline.length === 0) { 
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">此 PDF 無目錄</div>'; 
+                return; 
+            }
+            renderOutlineItems(outline, container);
+        }
+
+        function renderOutlineItems(items, container, level=0) {
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'outline-item';
+                div.style.paddingLeft = (10 + level * 15) + 'px';
+                div.innerText = item.title;
+                div.onclick = async () => {
+                    try {
+                        let dest = item.dest;
+                        if (typeof dest === 'string') { dest = await pdfDoc.getDestination(dest); }
+                        if (dest && dest.length > 0) {
+                            const ref = dest[0];
+                            const pageIndex = await pdfDoc.getPageIndex(ref);
+                            jumpToPage(pageIndex + 1);
+                        }
+                    } catch (e) { console.error('目錄跳轉失敗', e); }
+                };
+                container.appendChild(div);
+                if (item.items && item.items.length > 0) { renderOutlineItems(item.items, container, level + 1); }
+            });
+        }
+
+        function calculateBatches(){ 
+            totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE); 
+            const s = document.getElementById('jumpSelect'); s.innerHTML = ''; 
+            for(let i=0; i<totalBatches; i++) s.add(new Option(`第 ${i*BATCH_SIZE+1}-${Math.min((i+1)*BATCH_SIZE, pdfDoc.numPages)} 頁`, i)); 
+            updateNav(); 
+        }
+
+        async function renderCurrentBatch(){ 
+            if(!pdfDoc) return; 
+            showLoader("載入中..."); 
+            document.querySelectorAll('.pdf-page').forEach(p => p.remove()); 
+            document.getElementById('jumpSelect').value = currentBatchIndex; 
+            updateNav(); 
+            for(let i = (currentBatchIndex * BATCH_SIZE) + 1; i <= Math.min((currentBatchIndex + 1) * BATCH_SIZE, pdfDoc.numPages); i++) await renderPage(i); 
+            hideLoader(); 
+        }
+
+        async function renderPage(n){ 
+            const p = await pdfDoc.getPage(n), v = p.getViewport({scale: currentScale}); 
+            const d = document.createElement('div'); d.className = 'pdf-page'; 
+            d.style.width = v.width+'px'; d.style.height = v.height+'px'; d.dataset.pageNumber = n; 
+            d.style.cursor = editMode==='text'?'text':'crosshair'; 
+            
+            const c = document.createElement('canvas'); c.width = v.width; c.height = v.height; 
+            const t = document.createElement('div'); t.className = 'textLayer'; t.style.width = v.width+'px'; t.style.height = v.height+'px'; 
+            d.append(c, t); 
+            document.getElementById('viewerContainer').appendChild(d); 
+            
+            await p.render({canvasContext: c.getContext('2d'), viewport: v}).promise; 
+            pdfjsLib.renderTextLayer({textContent: await p.getTextContent(), container: t, viewport: v, textDivs: []}); 
+            
+            if(!isReaderMode) enableBoxSelection(d, n); 
+            restoreHighlights(n, d); 
+        }
         
-        function scrollToAnnotation(a){ const b = Math.floor((a.page - 1) / BATCH_SIZE); if(b !== currentBatchIndex){ currentBatchIndex = b; renderCurrentBatch().then(() => setTimeout(() => doScroll(a), 500)); } else doScroll(a); }
-        function doScroll(a){ const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`); if(el){ el.scrollIntoView({behavior: 'smooth', block: 'center'}); if(a.type !== 'area') el.classList.add('highlight-flash'); } }
+        function scrollToAnnotation(a){ 
+            const b = Math.floor((a.page - 1) / BATCH_SIZE); 
+            if(b !== currentBatchIndex){ 
+                currentBatchIndex = b; 
+                renderCurrentBatch().then(() => setTimeout(() => doScroll(a), 500)); 
+            } else doScroll(a); 
+        }
+
+        function doScroll(a){ 
+            const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`); 
+            if(el){ el.scrollIntoView({behavior: 'smooth', block: 'center'}); if(a.type !== 'area') el.classList.add('highlight-flash'); } 
+        }
         
         // =========================================
-        // 8. 輔助工具
+        // 8. 輔助工具函式
         // =========================================
         function showLightbox(s){ document.getElementById('lightboxImg').src = s; document.getElementById('imageLightbox').style.display = 'flex'; }
-        function makeDraggable(e, h){ let p1=0, p2=0, p3=0, p4=0; h.onmousedown = ev => { ev.preventDefault(); p3 = ev.clientX; p4 = ev.clientY; document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; }; document.onmousemove = v => { v.preventDefault(); p1 = p3 - v.clientX; p2 = p4 - v.clientY; p3 = v.clientX; p4 = v.clientY; e.style.top = (e.offsetTop - p2) + "px"; e.style.left = (e.offsetLeft - p1) + "px"; } }; }
+        
+        function makeDraggable(e, h){
+            let p1=0, p2=0, p3=0, p4=0;
+            h.onmousedown = ev => { 
+                ev.preventDefault(); p3 = ev.clientX; p4 = ev.clientY; 
+                document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; }; 
+                document.onmousemove = v => { 
+                    v.preventDefault(); p1 = p3 - v.clientX; p2 = p4 - v.clientY; p3 = v.clientX; p4 = v.clientY; 
+                    e.style.top = (e.offsetTop - p2) + "px"; e.style.left = (e.offsetLeft - p1) + "px"; 
+                } 
+            };
+        }
+
         function saveToLocal(){ if(!isReaderMode) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({annotations, bookmarks, globalMemo})); }
-        function checkAutoSave(){ const s = localStorage.getItem(AUTOSAVE_KEY); if(s){ try { const d = JSON.parse(s); if((d.annotations.length || d.bookmarks.length) && confirm("復原未存檔?")){ annotations = d.annotations; bookmarks = d.bookmarks || []; globalMemo = d.globalMemo || ""; renderSidebar(); renderBookmarks(); } } catch(e){} } }
-        function saveProject(){ download(JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, lastBatch: currentBatchIndex}), `Proj_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); }
-        function handleProjectLoad(i){ const r = new FileReader(); r.onload = e => { const d = JSON.parse(e.target.result); annotations = d.annotations || []; bookmarks = d.bookmarks || []; tagPresets = d.presets || tagPresets; globalMemo = d.globalMemo || ""; currentBatchIndex = d.lastBatch || 0; renderSidebar(); renderBookmarks(); saveToLocal(); renderCurrentBatch(); }; r.readAsText(i.files[0]); i.value = ''; }
-        function exportReaderHtml(){ let h = document.documentElement.outerHTML; const d = JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo}); download(h.replace(/<script id="embedded-data".*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`), 'Reader.html', 'text/html'); }
         
-        function openDataPreview() { if(annotations.length === 0) return alert("無資料"); let html = '<table class="data-table"><thead><tr>'; const headers = ['ID', 'Page', 'Title', 'Category', 'Priority', 'Status', 'Text/Content']; customFields.forEach(f => headers.push(f.label)); headers.push('Memo'); headers.forEach(h => html += `<th>${h}</th>`); html += '</tr></thead><tbody>'; annotations.forEach(a => { html += '<tr>'; html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`; html += `<td>${a.type==='area' ? '[圖片]' : a.text}</td>`; customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; }); html += `<td>${a.memo}</td></tr>`; }); html += '</tbody></table>'; document.getElementById('previewContent').innerHTML = html; document.getElementById('previewModal').style.display = 'flex'; }
-        
-        async function exportExcel(){ if(!annotations.length) return alert("無資料"); const w = new ExcelJS.Workbook(), s = w.addWorksheet('RTM'); s.columns = [{header: 'ID', key: 'id'}, {header: 'Title', key: 't'}, {header: 'Text', key: 'txt'}, {header: 'Memo', key: 'm'}]; annotations.forEach(a => s.addRow({id: a.rtmId, t: a.title, txt: a.text, m: a.memo.replace(/<[^>]+>/g, '')})); download(await w.xlsx.writeBuffer(), 'RTM.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }
-        async function performGlobalSearch(){ const q = document.getElementById('globalSearchInput').value; if(!q) return; const l = document.getElementById('searchResultsList'); l.innerHTML = '搜尋中...'; document.getElementById('searchPanel').style.display = 'flex'; let r = []; for(let i = 1; i <= pdfDoc.numPages; i++){ const t = (await(await pdfDoc.getPage(i)).getTextContent()).items.map(s => s.str).join(''); if(t.includes(q)) r.push({p: i, t: t.substring(t.indexOf(q) - 10, t.indexOf(q) + 20)}); } l.innerHTML = r.length ? '' : '無結果'; r.forEach(x => l.innerHTML += `<div class="search-item" onclick="jumpToPage(${x.p})">P.${x.p} ...${x.t}...</div>`); }
+        function checkAutoSave(){
+            const s = localStorage.getItem(AUTOSAVE_KEY);
+            if(s){
+                try {
+                    const d = JSON.parse(s);
+                    if((d.annotations.length || d.bookmarks.length) && confirm("復原未存檔?")){ 
+                        annotations = d.annotations; bookmarks = d.bookmarks || []; globalMemo = d.globalMemo || ""; 
+                        renderSidebar(); renderBookmarks(); 
+                    }
+                } catch(e){}
+            }
+        }
+
+        function saveProject(){ 
+            download(JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, lastBatch: currentBatchIndex}), `Proj_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); 
+        }
+
+        function handleProjectLoad(i){
+            const r = new FileReader();
+            r.onload = e => {
+                const d = JSON.parse(e.target.result);
+                annotations = d.annotations || []; bookmarks = d.bookmarks || []; tagPresets = d.presets || tagPresets; globalMemo = d.globalMemo || ""; currentBatchIndex = d.lastBatch || 0;
+                renderSidebar(); renderBookmarks(); saveToLocal(); renderCurrentBatch();
+            };
+            r.readAsText(i.files[0]); i.value = '';
+        }
+
+        function exportReaderHtml(){ 
+            let h = document.documentElement.outerHTML; 
+            const d = JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo}); 
+            download(h.replace(/<script id="embedded-data".*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`), 'Reader.html', 'text/html'); 
+        }
+
+        function openDataPreview() { 
+            if(annotations.length === 0) return alert("無資料"); 
+            let html = '<table class="data-table"><thead><tr>'; 
+            const headers = ['ID', 'Page', 'Title', 'Category', 'Priority', 'Status', 'Text/Content']; 
+            customFields.forEach(f => headers.push(f.label)); headers.push('Memo'); headers.forEach(h => html += `<th>${h}</th>`); html += '</tr></thead><tbody>'; 
+            annotations.forEach(a => { 
+                html += '<tr>'; 
+                html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`; 
+                html += `<td>${a.type==='area' ? '[圖片]' : a.text}</td>`; 
+                customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; }); 
+                html += `<td>${a.memo}</td></tr>`; 
+            }); 
+            html += '</tbody></table>'; 
+            document.getElementById('previewContent').innerHTML = html; 
+            document.getElementById('previewModal').style.display = 'flex'; 
+        }
+
+        async function exportExcel(){ 
+            if(!annotations.length) return alert("無資料"); 
+            const w = new ExcelJS.Workbook(), s = w.addWorksheet('RTM'); 
+            s.columns = [{header: 'ID', key: 'id'}, {header: 'Title', key: 't'}, {header: 'Text', key: 'txt'}, {header: 'Memo', key: 'm'}]; 
+            annotations.forEach(a => s.addRow({id: a.rtmId, t: a.title, txt: a.text, m: a.memo.replace(/<[^>]+>/g, '')})); 
+            download(await w.xlsx.writeBuffer(), 'RTM.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); 
+        }
+
+        async function performGlobalSearch(){ 
+            const q = document.getElementById('globalSearchInput').value; if(!q) return; 
+            const l = document.getElementById('searchResultsList'); l.innerHTML = '搜尋中...'; document.getElementById('searchPanel').style.display = 'flex'; 
+            let r = []; 
+            for(let i = 1; i <= pdfDoc.numPages; i++){ 
+                const t = (await(await pdfDoc.getPage(i)).getTextContent()).items.map(s => s.str).join(''); 
+                if(t.includes(q)) r.push({p: i, t: t.substring(t.indexOf(q) - 10, t.indexOf(q) + 20)}); 
+            } 
+            l.innerHTML = r.length ? '' : '無結果'; 
+            r.forEach(x => l.innerHTML += `<div class="search-item" onclick="jumpToPage(${x.p})">P.${x.p} ...${x.t}...</div>`); 
+        }
+
         function jumpToPage(p){ currentBatchIndex = Math.floor((p - 1) / BATCH_SIZE); renderCurrentBatch().then(() => setTimeout(() => scrollToP(p), 500)); }
         function scrollToP(p){ const el = document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
         function closeSearch(){ document.getElementById('searchPanel').style.display = 'none'; }
@@ -955,8 +1176,10 @@
         function download(c, n, t){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], {type: t})); a.download = n; a.click(); }
         function showLoader(t){ document.getElementById('loader').style.display = 'flex'; } 
         function hideLoader(){ document.getElementById('loader').style.display = 'none'; }
+        
         function jumpAndEdit(id){ const a = annotations.find(x => x.id === id); if(a){ currentSelection = {...a}; scrollToAnnotation(a); setTimeout(() => openModal(a), 600); } }
         function deleteItem(id){ if(confirm('刪除?')){ annotations = annotations.filter(x => x.id !== id); renderSidebar(); saveToLocal(); renderCurrentBatch(); } }
+        
         function memoExec(c){ document.execCommand(c === 'hilite' ? 'hiliteColor' : (c === 'checkbox' ? 'insertHTML' : 'removeFormat'), false, c === 'hilite' ? '#ffeb3b' : (c === 'checkbox' ? '&#x2610; ' : null)); }
         function globalMemoExec(c){ document.getElementById('globalMemoEditor').focus(); memoExec(c); }
         function openGlobalMemo(){ document.getElementById('globalMemoEditor').innerHTML = globalMemo; document.getElementById('globalMemoModal').style.display = 'flex'; }
@@ -967,6 +1190,7 @@
         function loadFromTemplate(s){ const t = localStorage.getItem(TEMPLATE_KEY); if(t){ const d = JSON.parse(t); tagPresets = d.presets; customFields = d.customFields; if(!s) openSettings(); } else if(!s) alert("無樣板"); }
         function saveAsTemplate(){ localStorage.setItem(TEMPLATE_KEY, JSON.stringify({presets: tagPresets, customFields})); alert("已儲存"); }
         function resetAllData(){ localStorage.clear(); location.reload(); }
+        
         function updateNav(){ document.getElementById('btnPrev').disabled = currentBatchIndex === 0; document.getElementById('btnNext').disabled = currentBatchIndex >= totalBatches - 1; }
         function nextBatch(){ if(currentBatchIndex < totalBatches - 1){ currentBatchIndex++; renderCurrentBatch(); } }
         function prevBatch(){ if(currentBatchIndex > 0){ currentBatchIndex--; renderCurrentBatch(); } }
