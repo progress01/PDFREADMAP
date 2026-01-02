@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V10.3 - Full Structure)</title>
+    <title>PDF 閱讀地圖 (Ultimate V10.4 - Preview Fixed)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -179,6 +179,14 @@
         .ai-item label { flex: 1; cursor: pointer; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ai-output { width: 100%; height: 150px; margin-top: 10px; padding: 10px; font-family: monospace; background: #222; color: #0f0; border: none; resize: vertical; }
 
+        .preview-table-container { flex: 1; overflow: auto; border: 1px solid #eee; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; background: white; color: #333; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        .data-table th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; font-weight: bold; color: #333; }
+        .data-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .data-table tr:hover { background-color: #f1f1f1; }
+        .data-table img { max-width: 100px; max-height: 60px; }
+
         .preview-box { background: #f0f0f0; padding: 10px; font-size: 0.9em; max-height: 150px; overflow-y: auto; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; resize: vertical; outline: none; color:#333; }
         .rich-memo { 
             width: 100%; min-height: 100px; max-height: 200px; padding: 10px; 
@@ -216,7 +224,7 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V10.3</h1>
+        <h1>🛠️ V10.4</h1>
         <button onclick="toggleDarkMode()" title="切換深色模式">🌙</button>
         <button onclick="toggleSidebarLayout()" title="切換佈局">⬅️</button>
 
@@ -238,9 +246,10 @@
         <input type="file" id="projectInput" accept=".json" style="display:none" onchange="handleProjectLoad(this)">
         
         <div style="flex:1"></div> 
-        <button class="primary" onclick="saveProject()">💾</button>
-        <button class="export" onclick="exportReaderHtml()">📦</button>
-        <button class="danger" onclick="exportExcel()">📊</button>
+        <button class="primary" onclick="saveProject()" title="存檔">💾</button>
+        <button class="export" onclick="exportReaderHtml()" title="打包HTML">📦</button>
+        <button class="info" onclick="openDataPreview()" title="預覽表格">👀</button>
+        <button class="danger" onclick="exportExcel()" title="下載Excel">📊</button>
 
         <div class="search-box">
             <input type="text" id="globalSearchInput" class="search-input" placeholder="全域搜尋..." onkeydown="if(event.key==='Enter') performGlobalSearch()">
@@ -263,8 +272,8 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V10.3 (Full Source): AI、搜尋、連結</p>
-                <p>已確認所有函式皆完整展開，無縮減。</p>
+                <p>V10.4: Fixed Preview Button</p>
+                <p>含：AI 輔助、雙向連結、即時搜尋、穩定版</p>
             </div>
             <div id="searchPanel">
                 <div class="search-header">
@@ -407,7 +416,15 @@
     </div>
 
     <div class="modal" id="previewModal">
-        <div class="modal-card"><h3>👀 預覽</h3><div class="preview-table-container"><div id="previewContent"></div></div><div style="text-align:right; margin-top:20px;"><button onclick="document.getElementById('previewModal').style.display='none'">關閉</button></div></div>
+        <div class="modal-card">
+            <h3 style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">👀 數據預覽</h3>
+            <div class="preview-table-container">
+                <div id="previewContent"></div>
+            </div>
+            <div style="text-align:right; margin-top:20px;">
+                <button onclick="document.getElementById('previewModal').style.display='none'">關閉</button>
+            </div>
+        </div>
     </div>
 
     <input type="file" id="imageUploadInput" accept="image/*" style="display:none">
@@ -434,7 +451,7 @@
         let isDirectMode = false;
         let activeMemoId = '';
         let isSpacePressed = false;
-        const AUTOSAVE_KEY = 'pdf_ult_v10_full';
+        const AUTOSAVE_KEY = 'pdf_ult_v10_stable';
         const TEMPLATE_KEY = 'pdf_ult_v10_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
@@ -613,7 +630,6 @@
             
             if(target) {
                 scrollToAnnotation(target);
-                // 視覺回饋
                 setTimeout(() => {
                    const el = document.getElementById('area-'+target.id) || document.querySelector(`.pdf-page[data-page-number="${target.page}"]`);
                    if(el) { 
@@ -906,7 +922,34 @@
         }
 
         // =========================================
-        // 9. 輔助工具 (Utilities)
+        // 9. 側邊欄與預覽 (Sidebar Preview)
+        // =========================================
+        function openDataPreview() {
+            if(annotations.length === 0) return alert("目前沒有資料可以預覽");
+            
+            let html = '<table class="data-table"><thead><tr>';
+            const headers = ['ID', 'Page', 'Title', 'Category', 'Priority', 'Status', 'Text/Content'];
+            customFields.forEach(f => headers.push(f.label)); 
+            headers.push('Memo');
+            
+            headers.forEach(h => html += `<th>${h}</th>`);
+            html += '</tr></thead><tbody>';
+            
+            annotations.forEach(a => {
+                html += '<tr>';
+                html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`;
+                html += `<td>${a.type==='area' ? '[圖片]' : a.text}</td>`;
+                customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; });
+                html += `<td>${a.memo}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            
+            document.getElementById('previewContent').innerHTML = html;
+            document.getElementById('previewModal').style.display = 'flex';
+        }
+
+        // =========================================
+        // 10. 輔助工具 (Utilities)
         // =========================================
         function showLightbox(s){ document.getElementById('lightboxImg').src = s; document.getElementById('imageLightbox').style.display = 'flex'; }
         
@@ -970,7 +1013,7 @@
         function saveGlobalMemo(){ globalMemo = document.getElementById('globalMemoEditor').innerHTML; saveToLocal(); document.getElementById('globalMemoModal').style.display = 'none'; }
         
         // =========================================
-        // 10. 設定與全域搜尋 (Settings & Global Search)
+        // 11. 設定與全域搜尋 (Settings & Global Search)
         // =========================================
         function openSettings(){
             const l = document.getElementById('presetList'); l.innerHTML = '';
