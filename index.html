@@ -159,6 +159,41 @@
         
         body.mode-read .toolbar { display: none; }
         body.mode-read .reader-toolbar { display: flex; }
+        
+        /* 1. 燈箱 (圖片放大) 樣式 */
+        .lightbox { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); 
+            z-index: 5000; 
+            justify-content: center; 
+            align-items: center; 
+            cursor: zoom-out; 
+            flex-direction: column;
+        }
+        .lightbox img { 
+            max-width: 90%; 
+            max-height: 85%; 
+            box-shadow: 0 0 20px rgba(255,255,255,0.2); 
+            border: 2px solid white; 
+            object-fit: contain;
+        }
+        .lightbox span {
+            color: #ccc; margin-top: 10px; font-size: 0.9em;
+        }
+
+        /* 2. 讓側邊欄內的圖片顯示為可點擊 */
+        .list-item img {
+            cursor: zoom-in;
+            transition: 0.2s;
+        }
+        .list-item img:hover {
+            opacity: 0.8;
+            outline: 2px solid #007bff;
+        }    
+        
     </style>
 </head>
 <body>
@@ -388,8 +423,16 @@
     <input type="file" id="imageUploadInput" accept="image/*" style="display:none">
 
     <script id="embedded-data" type="application/json"></script>
-
+    
     <script>
+        // --- 修正：showLightbox 必須在 script 標籤內 ---
+        function showLightbox(src) {
+            const lb = document.getElementById('imageLightbox');
+            const img = document.getElementById('lightboxImg');
+            img.src = src;
+            lb.style.display = 'flex';
+        }
+
         // =========================================
         // 1. 全域變數定義 (Global Variables)
         // =========================================
@@ -451,6 +494,15 @@
                 if (e.code === 'Space') { 
                     isSpacePressed = false; 
                     document.body.classList.remove('grabbing-mode'); 
+                }
+            });
+
+            // 刪除圖片的功能
+            document.getElementById('codeMemo').addEventListener('dblclick', function(e) {
+                if(e.target.tagName === 'IMG') {
+                    if(confirm('🗑️ 確定要移除這張圖片嗎？')) {
+                        e.target.remove();
+                    }
                 }
             });
 
@@ -846,9 +898,13 @@
             document.getElementById('previewContent').innerHTML = html;
             document.getElementById('previewModal').style.display = 'flex';
         }
-
+        
+        // --- 修改後的 renderSidebar (完全取代舊的) ---
         function renderSidebar() {
-            const list = document.getElementById('sidebarList'); document.getElementById('count').innerText=annotations.length; list.innerHTML='';
+            const list = document.getElementById('sidebarList'); 
+            document.getElementById('count').innerText = annotations.length; 
+            list.innerHTML = '';
+            
             const filterVal = document.getElementById('sidebarFilter').value;
             let filtered = annotations.filter(a => {
                 if(filterVal === 'all') return true;
@@ -857,12 +913,17 @@
                 if(filterVal === 'Image') return a.type === 'area';
                 return true;
             });
-            filtered.sort((a,b)=>a.page-b.page);
+            filtered.sort((a,b) => a.page - b.page);
             
             filtered.forEach(a => {
-                const d = document.createElement('div'); d.className='list-item'; d.style.borderLeftColor = a.color;
-                const icon = a.type==='area'?'🖼️':'📝';
-                let info = a.customData && Object.keys(a.customData).length>0 ? ` | ${a.customData[Object.keys(a.customData)[0]]}` : '';
+                const d = document.createElement('div'); 
+                d.className = 'list-item'; 
+                d.style.borderLeftColor = a.color;
+                
+                const icon = a.type === 'area' ? '🖼️' : '📝';
+                let info = a.customData && Object.keys(a.customData).length > 0 ? ` | ${a.customData[Object.keys(a.customData)[0]]}` : '';
+                
+                // 1. 先建立 HTML
                 d.innerHTML = `
                     <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;">
                         <span>P.${a.page} ${icon}</span>
@@ -874,13 +935,29 @@
                         <span style="font-size:0.8em;color:#666;">${info}</span>
                     </div>
                     <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-                        ${a.rtmId?`<b>[${a.rtmId}]</b> `:''}${a.text}
+                        ${a.rtmId ? `<b>[${a.rtmId}]</b> ` : ''}${a.text}
+                    </div>
+                    <div class="memo-content" style="margin-top:5px; border-top:1px dashed #eee; padding-top:5px; font-size:0.85em; color:#444;">
+                        ${a.memo}
                     </div>
                     <div class="item-actions">
                         <button class="icon-btn btn-edit" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
                         <button class="icon-btn btn-del" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
                     </div>`;
-                d.onclick=()=>scrollToAnnotation(a); list.appendChild(d);
+                
+                // 2. 綁定卡片點擊 (跳轉頁面)
+                d.onclick = () => scrollToAnnotation(a); 
+                
+                // 3. 關鍵修改：找出卡片內的所有圖片，綁定燈箱事件
+                // 並使用 stopPropagation 防止觸發卡片的跳轉功能
+                d.querySelectorAll('img').forEach(img => {
+                    img.onclick = (e) => {
+                        e.stopPropagation(); // 防止觸發 scrollToAnnotation
+                        showLightbox(img.src);
+                    };
+                });
+
+                list.appendChild(d);
             });
         }
         
@@ -1027,5 +1104,10 @@
              document.getElementById('btnNext').disabled = currentBatchIndex>=totalBatches-1; document.getElementById('btnNext').style.opacity = currentBatchIndex>=totalBatches-1?.5:1;
         }
     </script>
+    
+    <div class="lightbox" id="imageLightbox" onclick="this.style.display='none'">
+        <img id="lightboxImg" src="">
+        <span>點擊任意處關閉</span>
+    </div>
 </body>
 </html>
