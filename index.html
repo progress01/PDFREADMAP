@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V10.4 - Preview Fixed)</title>
+    <title>PDF 閱讀地圖 (Ultimate V10.7 - Maintainable Edition)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -12,7 +12,7 @@
 
     <style>
         /* =========================================
-           1. 全域變數與配色 (CSS Variables)
+           1. 全域變數 (CSS Variables)
            ========================================= */
         :root {
             --bg-color: #525659;
@@ -27,6 +27,7 @@
             --link-color: #007bff;
         }
 
+        /* 深色模式變數 */
         body.dark-mode {
             --bg-color: #1e1e1e;
             --sidebar-bg: #252526;
@@ -41,72 +42,204 @@
         }
 
         body { 
-            margin: 0; padding: 0; background: #333; 
+            margin: 0; 
+            padding: 0; 
+            background: #333; 
             font-family: "Microsoft JhengHei", "Segoe UI", sans-serif; 
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
             color: var(--text-color);
         }
 
         /* =========================================
-           2. 工具列 (Toolbar)
+           2. 工具列樣式 (Toolbars)
            ========================================= */
+        /* 主工具列 (V8 風格) */
         .toolbar { 
-            background: #222; color: white; padding: 10px 20px; 
-            display: flex; align-items: center; gap: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 100; flex-shrink: 0; flex-wrap: wrap; 
+            background: #222; 
+            color: white; 
+            padding: 10px 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
+            z-index: 100; 
+            flex-shrink: 0; 
+            flex-wrap: wrap; 
         }
+
+        /* 進階工具列 (V10 功能 - 預設隱藏) */
+        .advanced-toolbar {
+            background: #333; 
+            color: white; 
+            padding: 8px 20px;
+            display: none; /* 這裡控制顯示/隱藏 */
+            align-items: center; 
+            gap: 15px; 
+            border-bottom: 1px solid #555;
+            animation: slideDown 0.3s ease-out; 
+            z-index: 99;
+        }
+
+        @keyframes slideDown { 
+            from { transform: translateY(-100%); opacity: 0; } 
+            to { transform: translateY(0); opacity: 1; } 
+        }
+
+        /* 閱讀器模式專用工具列 */
         .reader-toolbar { 
-            background: #202b38; color: white; padding: 15px 20px; 
-            display: none; align-items: center; justify-content: space-between; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 101; flex-shrink: 0; 
+            background: #202b38; 
+            color: white; 
+            padding: 15px 20px; 
+            display: none; 
+            align-items: center; 
+            justify-content: space-between; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            z-index: 101; 
+            flex-shrink: 0; 
         }
-        h1 { margin: 0; font-size: 1.1em; color: #fff; margin-right: 10px; display: flex; align-items: center; gap: 5px; user-select: none; }
+
+        h1 { 
+            margin: 0; 
+            font-size: 1.1em; 
+            color: #fff; 
+            margin-right: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+            user-select: none; 
+        }
         
+        /* 按鈕基礎樣式 */
         button { 
-            padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; 
-            font-weight: bold; background: #444; color: white; transition: 0.2s; 
-            white-space: nowrap; font-size: 0.9em; display: inline-flex; align-items: center; gap: 4px; 
+            padding: 6px 12px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            background: #444; 
+            color: white; 
+            transition: 0.2s; 
+            white-space: nowrap; 
+            font-size: 0.9em; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 4px; 
         }
         button:hover { background: #666; transform: translateY(-1px); }
-        button.primary { background: #28a745; } button.primary:hover { background: #218838; }
-        button.export { background: #17a2b8; } button.info { background: #138496; }
-        button.warning { background: #ffc107; color: #333; } button.danger { background: #dc3545; }
-        button.ai-btn { background: #6f42c1; } button.ai-btn:hover { background: #59359a; }
+        button.primary { background: #28a745; } 
+        button.primary:hover { background: #218838; }
+        button.export { background: #17a2b8; } 
+        button.info { background: #138496; }
+        button.warning { background: #ffc107; color: #333; } 
+        button.danger { background: #dc3545; }
+        button.ai-btn { background: #6f42c1; } 
+        button.ai-btn:hover { background: #59359a; }
 
-        .zoom-btn { width: 30px; justify-content: center; padding: 6px 0; }
-        
-        .mode-switch { display: flex; background: #444; border-radius: 20px; padding: 2px; border: 1px solid #555; margin-right: 5px; }
-        .mode-btn { padding: 4px 12px; border-radius: 15px; cursor: pointer; font-size: 0.85em; color: #ccc; transition: 0.2s; user-select: none; }
-        .mode-btn.active { background: #007bff; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        /* 模式切換按鈕組 */
+        .mode-switch { 
+            display: flex; 
+            background: #444; 
+            border-radius: 20px; 
+            padding: 2px; 
+            border: 1px solid #555; 
+            margin-right: 10px; 
+        }
+        .mode-btn { 
+            padding: 4px 12px; 
+            border-radius: 15px; 
+            cursor: pointer; 
+            font-size: 0.85em; 
+            color: #ccc; 
+            transition: 0.2s; 
+            user-select: none; 
+        }
+        .mode-btn.active { 
+            background: #007bff; 
+            color: white; 
+            font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); 
+        }
 
-        .direct-switch { display: flex; align-items: center; margin-right: 10px; cursor: pointer; user-select: none; background: #444; padding: 2px 8px; border-radius: 15px; border: 1px solid #555; }
+        /* 靜默畫線開關 */
+        .direct-switch { 
+            display: flex; 
+            align-items: center; 
+            cursor: pointer; 
+            user-select: none; 
+            background: #555; 
+            padding: 4px 10px; 
+            border-radius: 15px; 
+            border: 1px solid #777; 
+        }
         .direct-switch.active { background: #dc3545; border-color: #dc3545; }
-        .direct-switch span { font-size: 0.8em; margin-left: 5px; color: #ccc; }
+        .direct-switch span { font-size: 0.85em; margin-left: 5px; color: #ddd; }
         .direct-switch.active span { color: white; font-weight: bold; }
 
-        .search-box { display: flex; align-items: center; background: white; border-radius: 4px; overflow: hidden; margin-left: auto; }
+        /* 搜尋框 */
+        .search-box { 
+            display: flex; 
+            align-items: center; 
+            background: white; 
+            border-radius: 4px; 
+            overflow: hidden; 
+            margin-left: auto; 
+        }
         .search-input { border: none; padding: 6px 10px; outline: none; font-size: 0.9em; width: 140px; color: #333; }
         .search-btn { background: #ffc107; color: #333; border-radius: 0; padding: 6px 10px; }
+        .search-btn:hover { background: #e0a800; }
 
         /* =========================================
-           3. 工作區 (Workspace)
+           3. 工作區佈局 (Workspace)
            ========================================= */
-        .workspace { display: flex; flex: 1; overflow: hidden; position: relative; background: var(--bg-color); }
+        .workspace { 
+            display: flex; 
+            flex: 1; 
+            overflow: hidden; 
+            position: relative; 
+            background: var(--bg-color); 
+        }
+        /* 左側側邊欄模式 */
         .workspace.sidebar-left { flex-direction: row-reverse; }
         .workspace.sidebar-left .sidebar { border-left: none; border-right: 1px solid #ccc; }
 
         #viewerContainer { 
-            flex: 1; overflow-y: auto; position: relative; 
-            display: flex; flex-direction: column; align-items: center; 
-            padding: 20px; padding-bottom: 120px; user-select: none; 
+            flex: 1; 
+            overflow-y: auto; 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            padding-bottom: 120px; 
+            user-select: none; 
         }
-        body.grabbing-mode #viewerContainer, body.grabbing-mode .pdf-page { cursor: grab !important; }
+        
+        body.grabbing-mode #viewerContainer, 
+        body.grabbing-mode .pdf-page { cursor: grab !important; }
         body.grabbing-mode #viewerContainer:active { cursor: grabbing !important; }
 
-        .pdf-page { position: relative; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); background: white; cursor: crosshair; transition: filter 0.3s; }
+        .pdf-page { 
+            position: relative; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            background: white; 
+            cursor: crosshair; 
+            transition: filter 0.3s; 
+        }
+        /* 深色模式下的 PDF 反轉 */
         body.dark-mode .pdf-page { filter: invert(0.9) hue-rotate(180deg); }
-        
-        .selection-marquee { position: absolute; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.2); pointer-events: none; z-index: 100; }
+
+        /* 選取框與高亮 */
+        .selection-marquee { 
+            position: absolute; 
+            border: 2px dashed #007bff; 
+            background-color: rgba(0, 123, 255, 0.2); 
+            pointer-events: none; 
+            z-index: 100; 
+        }
         .textLayer { opacity: 1; line-height: 1.0; }
         .textLayer span { color: transparent; position: absolute; white-space: pre; cursor: crosshair; }
         
@@ -120,34 +253,56 @@
            4. 側邊欄 (Sidebar)
            ========================================= */
         .sidebar { 
-            width: 320px; background: var(--sidebar-bg); border-left: 1px solid #ccc; 
-            display: flex; flex-direction: column; z-index: 90; color: var(--sidebar-text);
+            width: 320px; 
+            background: var(--sidebar-bg); 
+            border-left: 1px solid #ccc; 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 90; 
+            color: var(--sidebar-text);
             transition: background 0.3s;
         }
-        .sidebar-tabs { display: flex; background: #ddd; border-bottom: 1px solid #bbb; }
-        body.dark-mode .sidebar-tabs { background: #333; border-bottom: 1px solid #555; }
         
+        /* 頁籤 (隱藏式) */
+        .sidebar-tabs { display: none; background: #ddd; border-bottom: 1px solid #bbb; }
+        body.dark-mode .sidebar-tabs { background: #333; border-bottom: 1px solid #555; }
         .sidebar-tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; font-size: 0.9em; font-weight: bold; color: #666; user-select: none; }
-        body.dark-mode .sidebar-tab { color: #aaa; }
         .sidebar-tab.active { background: var(--sidebar-bg); color: var(--sidebar-text); border-top: 3px solid #007bff; }
 
         .sidebar-header { padding: 10px; background: var(--sidebar-bg); border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
         body.dark-mode .sidebar-header { border-bottom: 1px solid #444; }
 
+        /* 側邊欄搜尋框 (隱藏式) */
         #sidebarSearchInput {
-            width: 100%; padding: 6px; font-size: 0.9em; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc;
-            background: var(--input-bg); color: var(--input-text);
+            display: none; 
+            width: 100%; 
+            padding: 6px; 
+            font-size: 0.9em; 
+            margin-top: 5px; 
+            border-radius: 4px; 
+            border: 1px solid #ccc;
+            background: var(--input-bg); 
+            color: var(--input-text); 
+            box-sizing: border-box;
         }
 
         .sidebar-filter { width: 100%; padding: 5px; font-size: 0.9em; border: 1px solid #ccc; border-radius: 4px; background: var(--input-bg); color: var(--input-text); }
         .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
         
+        /* 列表項目 */
         .list-item { 
-            background: var(--item-bg); padding: 10px; margin-bottom: 8px; border-radius: 8px; 
-            border: 1px solid var(--item-border); cursor: pointer; border-left: 5px solid #ccc; 
-            transition: 0.2s; position: relative; padding-right: 50px; 
+            background: var(--item-bg); 
+            padding: 10px; 
+            margin-bottom: 8px; 
+            border-radius: 8px; 
+            border: 1px solid var(--item-border); 
+            cursor: pointer; 
+            border-left: 5px solid #ccc; 
+            transition: 0.2s; 
+            position: relative; 
+            padding-right: 50px; 
         }
-        .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fafafa; }
         .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
         .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
         .icon-btn:hover { background: #eee; color: #000; }
@@ -158,13 +313,27 @@
             display: flex; justify-content: space-between; align-items: center; cursor: pointer;
         }
         body.dark-mode .bookmark-item:hover { background: #444; }
-
         .memo-link { color: var(--link-color); text-decoration: underline; cursor: pointer; font-weight: bold; }
-        .memo-link:hover { opacity: 0.8; }
 
         /* =========================================
-           5. 視窗與元件 (Modals & Widgets)
+           5. 視窗元件 (Modals & Search)
            ========================================= */
+        #searchPanel { position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; }
+        .search-header { padding: 10px; background: #f1f3f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: bold; color: #333; }
+        .search-results { overflow-y: auto; padding: 5px; flex: 1; }
+        .search-item { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+        .search-item:hover { background: #f8f9fa; }
+        .search-tag { background: #e9ecef; color: #333; border: 1px solid #ced4da; font-size: 0.8em; padding: 4px 10px; border-radius: 15px; cursor: pointer; }
+        .search-tag:hover { background: #007bff; color: white; border-color: #007bff; }
+
+        .floating-nav { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; 
+            display: flex; gap: 10px; align-items: center; color: white; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; 
+        }
+        .zoom-btn { width: 30px; justify-content: center; padding: 6px 0; }
+
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; z-index: 3000; pointer-events: none; }
         .modal-card { 
             position: absolute; background: var(--modal-bg); color: var(--text-color); width: 450px; padding: 20px; 
@@ -172,11 +341,19 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; 
             pointer-events: auto; border: 1px solid #999;
         }
+        .modal-drag-handle { cursor: move; user-select: none; }
+        
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; background: var(--input-bg); color: var(--input-text); }
+        
+        .preview-box { background: #f0f0f0; padding: 10px; font-size: 0.9em; max-height: 150px; overflow-y: auto; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; resize: vertical; outline: none; color:#333; }
+        .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; flex-wrap: wrap; }
+        body.dark-mode .memo-toolbar { background: #444; }
+        .rich-memo { width: 100%; min-height: 100px; max-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: var(--input-bg); color: var(--input-text); line-height: 1.5; font-size: 0.95em; }
+        .custom-fields-area { border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 5px; }
         
         #aiModal .modal-card { width: 600px; height: 80vh; }
         .ai-list { flex: 1; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: var(--input-bg); border-radius: 4px; }
         .ai-item { display: flex; align-items: center; gap: 10px; padding: 5px; border-bottom: 1px solid #eee; }
-        .ai-item label { flex: 1; cursor: pointer; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ai-output { width: 100%; height: 150px; margin-top: 10px; padding: 10px; font-family: monospace; background: #222; color: #0f0; border: none; resize: vertical; }
 
         .preview-table-container { flex: 1; overflow: auto; border: 1px solid #eee; }
@@ -184,39 +361,14 @@
         .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
         .data-table th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 10; font-weight: bold; color: #333; }
         .data-table tr:nth-child(even) { background-color: #f9f9f9; }
-        .data-table tr:hover { background-color: #f1f1f1; }
-        .data-table img { max-width: 100px; max-height: 60px; }
-
-        .preview-box { background: #f0f0f0; padding: 10px; font-size: 0.9em; max-height: 150px; overflow-y: auto; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; resize: vertical; outline: none; color:#333; }
-        .rich-memo { 
-            width: 100%; min-height: 100px; max-height: 200px; padding: 10px; 
-            border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; 
-            background: var(--input-bg); color: var(--input-text);
-            line-height: 1.5; font-size: 0.95em; overflow-wrap: break-word; word-wrap: break-word; resize: vertical; 
-        }
-        .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; flex-wrap: wrap; }
-        body.dark-mode .memo-toolbar { background: #444; }
-        .memo-btn { font-size: 0.8em; padding: 3px 8px; background: white; color: #333; border: 1px solid #ccc; }
-        
-        #searchPanel { position: absolute; top: 60px; right: 340px; width: 320px; max-height: 500px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 2000; }
-        .search-results { overflow-y: auto; padding: 5px; flex: 1; }
-        .search-item { padding: 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-        
-        .floating-nav { 
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            background: rgba(33, 37, 41, 0.95); padding: 8px 15px; border-radius: 50px; 
-            display: flex; gap: 10px; align-items: center; color: white; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); border: 1px solid #555; 
-        }
 
         #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 4000; }
         .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
+        
         .lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5000; justify-content: center; align-items: center; cursor: zoom-out; flex-direction: column; }
         .lightbox img { max-width: 90%; max-height: 85%; box-shadow: 0 0 20px rgba(255,255,255,0.2); border: 2px solid white; object-fit: contain; }
         .list-item img { cursor: zoom-in; transition: 0.2s; } .list-item img:hover { opacity: 0.8; outline: 2px solid #007bff; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; background: var(--input-bg); color: var(--input-text); }
     </style>
 </head>
 <body>
@@ -224,18 +376,12 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V10.4</h1>
-        <button onclick="toggleDarkMode()" title="切換深色模式">🌙</button>
-        <button onclick="toggleSidebarLayout()" title="切換佈局">⬅️</button>
-
+        <h1>🛠️ 閱讀地圖 <span style="font-size:0.5em; opacity:0.6;">V10.6</span></h1>
+        
         <div class="mode-switch">
-            <div class="mode-btn active" id="modeText" onclick="setMode('text')">📝 文字</div>
-            <div class="mode-btn" id="modeArea" onclick="setMode('area')">🖼️ 圖表</div>
+            <div class="mode-btn active" id="modeText" onclick="setMode('text')">📝 抓文字</div>
+            <div class="mode-btn" id="modeArea" onclick="setMode('area')">🖼️ 框圖表</div>
         </div>
-
-        <div class="direct-switch" id="directSwitch" onclick="toggleDirectMode()">🖍️<span>畫線</span></div>
-
-        <button class="ai-btn" onclick="openAIModal()">🤖 AI 助手</button>
 
         <button onclick="openSettings()">⚙️ 設定</button>
         <button class="warning" onclick="openGlobalMemo()">💡 靈感</button>
@@ -245,11 +391,14 @@
         <button onclick="document.getElementById('projectInput').click()">📥 專案</button>
         <input type="file" id="projectInput" accept=".json" style="display:none" onchange="handleProjectLoad(this)">
         
+        <button onclick="toggleAdvancedUI()" style="border:1px dashed #777; margin-left: 5px;">🔨 工具箱</button>
+
         <div style="flex:1"></div> 
-        <button class="primary" onclick="saveProject()" title="存檔">💾</button>
-        <button class="export" onclick="exportReaderHtml()" title="打包HTML">📦</button>
-        <button class="info" onclick="openDataPreview()" title="預覽表格">👀</button>
-        <button class="danger" onclick="exportExcel()" title="下載Excel">📊</button>
+        
+        <button class="primary" onclick="saveProject()">💾 存檔json</button>
+        <button class="export" onclick="exportReaderHtml()">📦 打包html</button>
+        <button class="info" onclick="openDataPreview()">👀 預覽excel</button>
+        <button class="danger" onclick="exportExcel()">📊 下載Excel</button>
 
         <div class="search-box">
             <input type="text" id="globalSearchInput" class="search-input" placeholder="全域搜尋..." onkeydown="if(event.key==='Enter') performGlobalSearch()">
@@ -257,10 +406,22 @@
         </div>
     </div>
 
+    <div class="advanced-toolbar" id="advancedToolbar">
+        <span style="font-weight:bold; color:#aaa; font-size:0.9em;">[進階功能]</span>
+        <button onclick="toggleDarkMode()" title="降低螢幕亮度">🌙 深色模式</button>
+        <button onclick="toggleSidebarLayout()" title="將列表移至左側">⬅️ 側欄換邊</button>
+        
+        <div class="direct-switch" id="directSwitch" onclick="toggleDirectMode()">
+            🖍️<span>直接畫線 (靜默)</span>
+        </div>
+
+        <button class="ai-btn" onclick="openAIModal()">🤖 AI 提示詞助手</button>
+    </div>
+
     <div class="reader-toolbar" id="readToolbar">
         <div style="display:flex; align-items:center; gap:15px;">
-            <h1 style="color:#28a745;">📖 閱讀模式</h1>
-            <span style="font-size:0.9em; color:#bbb;" id="readerFileName"></span>
+            <h1 style="color:#28a745;">📖 成果閱讀器</h1>
+            <span style="font-size:0.9em; color:#bbb;" id="readerFileName">尚未載入文件...</span>
         </div>
         <div>
             <button class="primary" onclick="document.getElementById('readerPdfInput').click()">📂 開啟原始 PDF</button>
@@ -272,19 +433,21 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V10.4: Fixed Preview Button</p>
-                <p>含：AI 輔助、雙向連結、即時搜尋、穩定版</p>
+                <p>經典介面，強大核心 (Classic Look, Power Core)</p>
+                <p style="font-size:0.8em; color:#666;">(點擊上方「🔨 工具箱」可開啟 AI、深色模式與進階功能)</p>
             </div>
+            
             <div id="searchPanel">
                 <div class="search-header">
-                    <span>⚡ 速查</span><span style="cursor:pointer; font-size:1.2em;" onclick="closeSearch()">×</span>
+                    <span>⚡ 速查速標</span>
+                    <span style="cursor:pointer; font-size:1.2em;" onclick="closeSearch()">×</span>
                 </div>
                 <div class="search-results" id="searchResultsList"></div>
             </div>
         </div>
 
         <div class="sidebar">
-            <div class="sidebar-tabs">
+            <div class="sidebar-tabs" id="sidebarTabs">
                 <div class="sidebar-tab active" id="tabIndex" onclick="switchSidebarTab('index')">📝 索引</div>
                 <div class="sidebar-tab" id="tabBookmark" onclick="switchSidebarTab('bookmark')">🔖 書籤</div>
             </div>
@@ -292,16 +455,16 @@
             <div id="panelIndex" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
                 <div class="sidebar-header">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:bold;">列表 (<span id="count">0</span>)</span>
-                        <button style="font-size:0.75em; padding:2px 6px; background:#6c757d;" onclick="clearAutoSave()">清空</button>
+                        <span style="font-weight:bold;">索引列表 (<span id="count">0</span>)</span>
+                        <button style="font-size:0.75em; padding:2px 6px; background:#6c757d;" onclick="clearAutoSave()">清空列表</button>
                     </div>
                     <input type="text" id="sidebarSearchInput" placeholder="🔎 搜尋 ID/標題/標籤/內文..." oninput="renderSidebar()">
                     
                     <select class="sidebar-filter" id="sidebarFilter" onchange="renderSidebar()" style="margin-top:5px;">
                         <option value="all">顯示全部</option>
-                        <option value="High">🔴 High</option>
-                        <option value="Pending">🕒 Pending</option>
-                        <option value="Image">🖼️ 圖片</option>
+                        <option value="High">🔴 只顯示 High</option>
+                        <option value="Pending">🕒 只顯示 Pending</option>
+                        <option value="Image">🖼️ 只顯示圖片</option>
                     </select>
                 </div>
                 <div class="sidebar-list" id="sidebarList"></div>
@@ -309,7 +472,7 @@
 
             <div id="panelBookmark" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
                 <div class="sidebar-header">
-                    <button class="primary" style="width:100%" onclick="addBookmark()">➕ 加入書籤</button>
+                    <button class="primary" style="width:100%" onclick="addBookmark()">➕ 將此頁加入書籤</button>
                 </div>
                 <div class="sidebar-list" id="bookmarkList"></div>
             </div>
@@ -317,59 +480,39 @@
     </div>
 
     <div class="floating-nav" id="bottomNav" style="display:none;">
-        <button class="zoom-btn" onclick="changeScale(-0.25)">-</button>
-        <span id="zoomLevel" style="font-size:0.9em; min-width:40px; text-align:center; color:white;">150%</span>
-        <button class="zoom-btn" onclick="changeScale(0.25)">+</button>
-        <div style="width:1px; height:15px; background:#666; margin:0 10px;"></div>
-        <button id="btnPrev" onclick="prevBatch()" style="border-radius:20px;">⬅</button>
-        <select id="jumpSelect" onchange="jumpToBatch(this.value)" style="width:auto; background:#333; color:white; border:none;"></select>
-        <button id="btnNext" onclick="nextBatch()" style="border-radius:20px;" class="primary">➡</button>
-        <select id="batchSizeSelect" onchange="changeBatchSize()" style="width:auto; margin-left:10px; background:#333; color:white; border:none;">
+        <div style="display:flex; gap:5px; border-right:1px solid #666; padding-right:10px; margin-right:10px; align-items:center;">
+            <button class="zoom-btn" onclick="changeScale(-0.25)">-</button>
+            <span id="zoomLevel" style="font-size:0.9em; min-width:40px; text-align:center; color:white;">150%</span>
+            <button class="zoom-btn" onclick="changeScale(0.25)">+</button>
+        </div>
+
+        <button id="btnPrev" onclick="prevBatch()" style="border-radius:20px; padding:6px 15px;">⬅</button>
+        <select id="jumpSelect" onchange="jumpToBatch(this.value)" style="width:auto; padding:4px; background:#333; color:white; border:none; margin:0 5px;">
+            <option value="0">Page 1 - ...</option>
+        </select>
+        <button id="btnNext" onclick="nextBatch()" style="border-radius:20px; padding:6px 15px;" class="primary">➡</button>
+        <div style="width:1px; height:15px; background:#666; margin:0 5px;"></div>
+        <select id="batchSizeSelect" onchange="changeBatchSize()" style="width:auto; padding:4px; font-size:0.85em; background:#333; color:white; border:none;">
             <option value="10">10 頁</option>
             <option value="20">20 頁</option>
+            <option value="50">50 頁</option>
         </select>
-    </div>
-
-    <div class="modal" id="aiModal">
-        <div class="modal-card">
-            <h3 style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">🤖 AI 提示詞產生器</h3>
-            <p style="font-size:0.9em; color:#666; margin:0;">勾選左側已標註的內容，選擇模板，自動生成 Prompt。</p>
-            
-            <div style="display:flex; gap:10px; margin-bottom:5px;">
-                <select id="aiTemplate" onchange="updateAIPromptPreview()">
-                    <option value="summary">📝 摘要總結 (Summarize)</option>
-                    <option value="explain">💡 白話解釋 (Explain)</option>
-                    <option value="check">✅ 邏輯檢查 (Check Logic)</option>
-                    <option value="qa">❓ 出考題 (Generate Quiz)</option>
-                    <option value="custom">🛠️ 自定義 (Custom)</option>
-                </select>
-                <button onclick="selectAllForAI()">全選</button>
-            </div>
-
-            <div id="aiSelectionList" class="ai-list"></div>
-            
-            <label style="margin-top:10px; font-weight:bold;">生成結果 (可直接修改)：</label>
-            <textarea id="aiOutput" class="ai-output"></textarea>
-            
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-                <button onclick="document.getElementById('aiModal').style.display='none'">關閉</button>
-                <button class="primary" onclick="copyAIToClipboard()">📋 複製 Prompt</button>
-            </div>
-        </div>
     </div>
 
     <div class="modal" id="editorModal">
         <div class="modal-card" id="editorCard">
-            <h3 id="modalTitle" class="modal-drag-handle" style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">🖍️ 編輯</h3>
+            <h3 id="modalTitle" class="modal-drag-handle" style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">🖍️ 編輯標註</h3>
+            <label style="font-size:0.8em; color:#666; margin-top:10px;">內容預覽</label>
             <div id="quotePreview" class="preview-box"></div>
             <div style="display:flex; gap:10px;">
-                <div style="flex:1"><label>ID</label><input type="text" id="rtmId"></div>
-                <div style="flex:2"><label>標題</label><input type="text" id="rtmTitle"></div>
+                <div style="flex:1"><label>RTM ID</label><input type="text" id="rtmId" placeholder="例: REQ-0001"></div>
+                <div style="flex:2"><label>標題</label><input type="text" id="rtmTitle" placeholder="輸入標題..."></div>
             </div>
             <div style="margin-top:10px;">
+                <label>分類標籤</label>
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="codeName" placeholder="標籤..." style="flex:1">
-                    <input type="color" id="codeColor" value="#ffeb3b" style="height:35px; width:40px; border:none;">
+                    <input type="text" id="codeName" placeholder="標籤名稱..." style="flex:1">
+                    <input type="color" id="codeColor" value="#ffeb3b" style="height:35px; width:40px; padding:0; border:none; cursor:pointer;">
                 </div>
                 <div id="quickTagArea" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;"></div>
             </div>
@@ -379,19 +522,42 @@
                 <div style="flex:1"><label>狀態</label><select id="rtmStatus"><option value="New">New</option><option value="Pending">Pending</option><option value="Closed">Closed</option></select></div>
             </div>
             <div>
-                <label>筆記 (支援 [[ID]] 連結)</label>
+                <label>筆記 (支援 [[WikiLink]])</label>
                 <div class="memo-toolbar">
-                    <button class="memo-btn" onclick="memoExec('hilite')">🖊️</button>
-                    <button class="memo-btn" onclick="memoExec('checkbox')">☑️</button>
-                    <button class="memo-btn" onclick="triggerImageUpload('codeMemo')">📷</button>
-                    <button class="memo-btn" onclick="insertLinkPlaceholder()">🔗 [[連結]]</button>
-                    <button class="memo-btn" onclick="memoExec('clear')">🧹</button>
+                    <button class="memo-btn" onclick="memoExec('hilite')">🖊️ 螢光筆</button>
+                    <button class="memo-btn" onclick="memoExec('checkbox')">☑️ 待辦</button>
+                    <button class="memo-btn" onclick="triggerImageUpload('codeMemo')">📷 插入圖片</button>
+                    <button class="memo-btn" onclick="insertLinkPlaceholder()">🔗 連結</button>
+                    <button class="memo-btn" onclick="memoExec('clear')">🧹 清格式</button>
                 </div>
-                <div id="codeMemo" class="rich-memo" contenteditable="true"></div>
+                <div id="codeMemo" class="rich-memo" contenteditable="true" placeholder="可直接貼上截圖..."></div>
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
-                <button onclick="closeModal()">取消</button>
-                <button class="primary btn-save" onclick="confirmAnnotation()">確定</button>
+                <button onclick="closeModal()">取消 (Esc)</button>
+                <button class="primary btn-save" onclick="confirmAnnotation()">確定 (Enter)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="aiModal">
+        <div class="modal-card">
+            <h3 style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">🤖 AI 提示詞產生器</h3>
+            <p style="font-size:0.9em; color:#666; margin:0;">勾選左側標註，生成 Prompt。</p>
+            <div style="display:flex; gap:10px; margin-bottom:5px;">
+                <select id="aiTemplate" onchange="updateAIPromptPreview()">
+                    <option value="summary">📝 摘要總結</option>
+                    <option value="explain">💡 白話解釋</option>
+                    <option value="check">✅ 邏輯檢查</option>
+                    <option value="qa">❓ 出考題</option>
+                    <option value="custom">🛠️ 自定義</option>
+                </select>
+                <button onclick="selectAllForAI()">全選</button>
+            </div>
+            <div id="aiSelectionList" class="ai-list"></div>
+            <textarea id="aiOutput" class="ai-output"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                <button onclick="document.getElementById('aiModal').style.display='none'">關閉</button>
+                <button class="primary" onclick="copyAIToClipboard()">📋 複製 Prompt</button>
             </div>
         </div>
     </div>
@@ -401,29 +567,33 @@
             <h3 style="margin:0; padding-bottom:10px;">💡 全局靈感筆記</h3>
             <div class="memo-toolbar"><button class="memo-btn" onclick="globalMemoExec('hilite')">🖊️</button><button class="memo-btn" onclick="globalMemoExec('checkbox')">☑️</button></div>
             <div id="globalMemoEditor" class="rich-memo" style="flex:1;" contenteditable="true"></div>
-            <div style="text-align:right; margin-top:20px;"><button class="primary" onclick="saveGlobalMemo()">儲存</button></div>
+            <div style="text-align:right; margin-top:20px;"><button class="primary" onclick="saveGlobalMemo()">儲存並關閉</button></div>
         </div>
     </div>
 
     <div class="modal" id="settingsModal">
         <div class="modal-card">
-            <h3>⚙️ 設定</h3>
-            <div style="margin-bottom:10px;"><button class="info" onclick="saveAsTemplate()">存為預設樣板</button> <button class="warning" onclick="loadFromTemplate()">載入樣板</button></div>
-            <div style="background:#f8f9fa; padding:10px; margin-bottom:10px;"><input type="text" id="newTagName" placeholder="標籤名..."><button class="primary" onclick="addPreset()">新增</button></div>
-            <div id="presetList" style="max-height:100px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:5px; color:#333;"></div>
-            <div style="margin-top:20px;"><button class="danger" onclick="resetAllData()">⚠️ 重置系統</button> <button onclick="document.getElementById('settingsModal').style.display='none'">關閉</button></div>
+            <h3 style="margin:0;">⚙️ 系統設定</h3>
+            <div style="margin-bottom:10px; display:flex; justify-content:space-between;">
+                <span>樣板管理</span>
+                <div><button class="info" onclick="saveAsTemplate()">存為預設</button> <button class="warning" onclick="loadFromTemplate()">載入樣板</button></div>
+            </div>
+            <div style="background:#f8f9fa; padding:10px; margin-bottom:10px; display:flex; gap:5px;">
+                <input type="text" id="newTagName" placeholder="名稱..." style="flex:1">
+                <input type="color" id="newTagColor" value="#17a2b8" style="width:40px; border:none; height:36px;">
+                <button class="primary" onclick="addPreset()">新增</button>
+            </div>
+            <div id="presetList" style="max-height:100px; overflow-y:auto; border:1px solid #eee; padding:10px; display:flex; flex-wrap:wrap; gap:5px;"></div>
+            <div id="customFieldList" style="margin-top:10px; border:1px solid #eee; padding:10px;"></div>
+            <div style="margin-top:20px; text-align:right;"><button class="danger" onclick="resetAllData()">⚠️ 重置系統</button> <button onclick="document.getElementById('settingsModal').style.display='none'">關閉</button></div>
         </div>
     </div>
 
     <div class="modal" id="previewModal">
         <div class="modal-card">
-            <h3 style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">👀 數據預覽</h3>
-            <div class="preview-table-container">
-                <div id="previewContent"></div>
-            </div>
-            <div style="text-align:right; margin-top:20px;">
-                <button onclick="document.getElementById('previewModal').style.display='none'">關閉</button>
-            </div>
+            <h3 style="margin:0; padding-bottom:10px;">👀 數據預覽</h3>
+            <div class="preview-table-container"><div id="previewContent"></div></div>
+            <div style="text-align:right; margin-top:20px;"><button onclick="document.getElementById('previewModal').style.display='none'">關閉</button></div>
         </div>
     </div>
 
@@ -451,218 +621,71 @@
         let isDirectMode = false;
         let activeMemoId = '';
         let isSpacePressed = false;
-        const AUTOSAVE_KEY = 'pdf_ult_v10_stable';
+        
+        // 滑鼠拖曳變數 (V10.5 Fix)
+        let isMouseDragging = false, dragStartX = 0, dragStartY = 0, currentMarquee = null, activePageDiv = null, activePageNum = 0;
+
+        const AUTOSAVE_KEY = 'pdf_ult_v10_classic';
         const TEMPLATE_KEY = 'pdf_ult_v10_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
         // =========================================
-        // 2. 初始化與事件監聽 (Initialization)
+        // 2. 初始化 (Initialization)
         // =========================================
         window.onload = function() {
-            // 載入樣板與暫存
             loadFromTemplate(true); 
             checkEmbeddedData(); 
             if(!isReaderMode) checkAutoSave();
             
-            // 恢復 UI 狀態
+            // 載入 UI 狀態 (若之前開啟過，保持狀態)
             if(localStorage.getItem('isDarkMode') === 'true') document.body.classList.add('dark-mode');
             if(localStorage.getItem('isSidebarLeft') === 'true') document.getElementById('workspace').classList.add('sidebar-left');
             
             // 鍵盤事件
             window.addEventListener('keydown', (e) => {
-                // ESC 關閉所有視窗
-                if(e.key === 'Escape') {
-                    document.querySelectorAll('.modal,#searchPanel').forEach(el => el.style.display = 'none');
-                }
-                // Ctrl+Enter 確認標註
-                if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && document.getElementById('editorModal').style.display === 'flex') {
-                    confirmAnnotation();
-                }
-                // Space 鍵盤平移 (排除輸入框)
+                if(e.key === 'Escape') document.querySelectorAll('.modal,#searchPanel').forEach(el => el.style.display = 'none');
+                if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && document.getElementById('editorModal').style.display === 'flex') confirmAnnotation();
                 if(e.code === 'Space' && !e.repeat && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && !document.activeElement.isContentEditable) { 
-                    isSpacePressed = true; 
-                    document.body.classList.add('grabbing-mode'); 
-                    e.preventDefault(); 
+                    isSpacePressed = true; document.body.classList.add('grabbing-mode'); e.preventDefault(); 
                 }
             });
+            window.addEventListener('keyup', (e) => { if(e.code === 'Space') { isSpacePressed = false; document.body.classList.remove('grabbing-mode'); }});
 
-            window.addEventListener('keyup', (e) => { 
-                if(e.code === 'Space') { 
-                    isSpacePressed = false; 
-                    document.body.classList.remove('grabbing-mode'); 
-                }
-            });
+            // 全域滑鼠監聽 (修正畫線)
+            window.addEventListener('mousemove', handleGlobalMouseMove);
+            window.addEventListener('mouseup', handleGlobalMouseUp);
 
             document.getElementById('imageUploadInput').addEventListener('change', handleImageInsert);
             makeDraggable(document.getElementById("editorCard"), document.getElementById("modalTitle"));
         };
 
         // =========================================
-        // 3. AI 助手功能 (AI Copilot)
+        // 3. UI 切換 (工具箱邏輯)
         // =========================================
-        function openAIModal() {
-            const list = document.getElementById('aiSelectionList'); 
-            list.innerHTML = '';
+        function toggleAdvancedUI() {
+            const bar = document.getElementById('advancedToolbar');
+            const tabs = document.getElementById('sidebarTabs');
+            const search = document.getElementById('sidebarSearchInput');
             
-            annotations.forEach(a => {
-                const div = document.createElement('div'); div.className = 'ai-item';
-                div.innerHTML = `<input type="checkbox" value="${a.id}" id="ai_chk_${a.id}"> <label for="ai_chk_${a.id}">[${a.rtmId}] ${a.title || a.text.substring(0,20)}</label>`;
-                list.appendChild(div);
-            });
+            const isHidden = bar.style.display === 'none' || bar.style.display === '';
             
-            updateAIPromptPreview();
-            document.getElementById('aiModal').style.display = 'flex';
-        }
-
-        function selectAllForAI() { 
-            document.querySelectorAll('#aiSelectionList input').forEach(c => c.checked = true); 
-            updateAIPromptPreview(); 
-        }
-
-        function updateAIPromptPreview() {
-            const tmpl = document.getElementById('aiTemplate').value;
-            const ids = Array.from(document.querySelectorAll('#aiSelectionList input:checked')).map(c => c.value);
-            const selAnns = annotations.filter(a => ids.includes(a.id));
-            
-            let context = selAnns.map(a => 
-                `【ID: ${a.rtmId} | 標題: ${a.title}】\n內容: ${a.text}\n筆記: ${a.memo.replace(/<[^>]+>/g,'')}`
-            ).join('\n\n----------------\n\n');
-            
-            if(!context) context = "(請先勾選上方的資料)";
-
-            let prompt = "";
-            if(tmpl === 'summary') prompt = "請幫我總結以下標註內容，歸納出重點摘要：\n\n";
-            else if(tmpl === 'explain') prompt = "請用白話文解釋以下這段內容的含義，並舉例說明：\n\n";
-            else if(tmpl === 'check') prompt = "請檢查以下內容是否存在邏輯矛盾或不明確之處：\n\n";
-            else if(tmpl === 'qa') prompt = "請根據以下內容，出 3 題測試理解度的選擇題（附答案）：\n\n";
-            else prompt = "請根據以下資料回答問題：\n\n";
-
-            document.getElementById('aiOutput').value = prompt + context;
-        }
-
-        function copyAIToClipboard() {
-            const txt = document.getElementById('aiOutput'); 
-            txt.select(); 
-            document.execCommand('copy');
-            alert("✅ Prompt 已複製！請切換到 ChatGPT/Claude 貼上。");
-        }
-
-        // =========================================
-        // 4. 側邊欄與搜尋 (Sidebar & Search)
-        // =========================================
-        function renderSidebar() {
-            const list = document.getElementById('sidebarList'); 
-            list.innerHTML = '';
-            
-            const filterVal = document.getElementById('sidebarFilter').value;
-            const searchVal = document.getElementById('sidebarSearchInput').value.toLowerCase().trim();
-            document.getElementById('count').innerText = annotations.length;
-
-            let filtered = annotations.filter(a => {
-                if(filterVal === 'High' && a.priority !== 'High') return false;
-                if(filterVal === 'Pending' && a.status !== 'Pending') return false;
-                if(filterVal === 'Image' && a.type !== 'area') return false;
-                
-                if(searchVal) {
-                    const match = (a.title && a.title.toLowerCase().includes(searchVal)) || 
-                                  (a.code && a.code.toLowerCase().includes(searchVal)) ||
-                                  (a.rtmId && a.rtmId.toLowerCase().includes(searchVal)) ||
-                                  (a.text && a.text.toLowerCase().includes(searchVal)) ||
-                                  (a.memo && a.memo.toLowerCase().includes(searchVal));
-                    if(!match) return false;
-                }
-                return true;
-            });
-            
-            filtered.sort((a,b) => a.page - b.page);
-
-            filtered.forEach(a => {
-                const d = document.createElement('div'); 
-                d.className = 'list-item'; 
-                d.style.borderLeftColor = a.color;
-                
-                // Wiki Link 格式化
-                const displayMemo = formatMemoLinks(a.memo);
-                
-                d.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;">
-                        <span>P.${a.page} ${a.type==='area'?'🖼️':'📝'}</span>
-                        <span>${a.priority}</span>
-                    </div>
-                    <div style="font-weight:bold;margin:4px 0;font-size:1em;">${a.title||a.code}</div>
-                    <div style="margin-bottom:4px;"><span class="tag-badge" style="background:${a.color}">${a.code}</span></div>
-                    <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-                        ${a.rtmId ? `<b>[${a.rtmId}]</b> ` : ''}${a.text}
-                    </div>
-                    <div class="memo-content" style="margin-top:5px;border-top:1px dashed #eee;padding-top:5px;font-size:0.85em;color:#444;">
-                        ${displayMemo}
-                    </div>
-                    <div class="item-actions">
-                        <button class="icon-btn" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
-                        <button class="icon-btn" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
-                    </div>`;
-                
-                d.onclick = () => scrollToAnnotation(a);
-                d.querySelectorAll('img').forEach(img => { 
-                    img.onclick = (e) => { e.stopPropagation(); showLightbox(img.src); }
-                });
-                
-                list.appendChild(d);
-            });
-        }
-
-        // =========================================
-        // 5. Wiki 連結邏輯 (Wiki Links)
-        // =========================================
-        function insertLinkPlaceholder() { 
-            document.execCommand('insertText', false, '[[ID或關鍵字]]'); 
-        }
-        
-        function formatMemoLinks(html) {
-            if(!html) return "";
-            return html.replace(/\[\[(.*?)\]\]/g, (match, ref) => {
-                return `<span class="memo-link" onclick="event.stopPropagation(); handleWikiLink('${ref}')">${match}</span>`;
-            });
-        }
-
-        function handleWikiLink(ref) {
-            const target = annotations.find(a => a.rtmId === ref || a.title === ref || a.code === ref);
-            
-            if(target) {
-                scrollToAnnotation(target);
-                setTimeout(() => {
-                   const el = document.getElementById('area-'+target.id) || document.querySelector(`.pdf-page[data-page-number="${target.page}"]`);
-                   if(el) { 
-                       const originalOutline = el.style.outline;
-                       el.style.outline = "5px solid cyan"; 
-                       setTimeout(() => el.style.outline = originalOutline, 1500); 
-                   }
-                }, 800);
+            if (isHidden) {
+                bar.style.display = 'flex';
+                tabs.style.display = 'flex';
+                search.style.display = 'block';
             } else {
-                if(confirm(`找不到完全匹配 "${ref}" 的標註。是否進行搜尋？`)) {
-                    document.getElementById('sidebarSearchInput').value = ref;
-                    renderSidebar();
-                    switchSidebarTab('index');
-                }
+                bar.style.display = 'none';
+                tabs.style.display = 'none';
+                search.style.display = 'none';
+                // 關閉時若在書籤頁，切回索引，避免看不見
+                switchSidebarTab('index');
             }
         }
 
-        // =========================================
-        // 6. UI 與 書籤 (UI & Bookmarks)
-        // =========================================
-        function toggleDarkMode(){ 
-            document.body.classList.toggle('dark-mode'); 
-            localStorage.setItem('isDarkMode', document.body.classList.contains('dark-mode')); 
-        }
-        function toggleSidebarLayout(){ 
-            document.getElementById('workspace').classList.toggle('sidebar-left'); 
-            localStorage.setItem('isSidebarLeft', document.getElementById('workspace').classList.contains('sidebar-left')); 
-        }
-        function toggleDirectMode(){ 
-            isDirectMode = !isDirectMode; 
-            document.getElementById('directSwitch').classList.toggle('active', isDirectMode); 
-        }
-        
+        function toggleDarkMode(){ document.body.classList.toggle('dark-mode'); localStorage.setItem('isDarkMode', document.body.classList.contains('dark-mode')); }
+        function toggleSidebarLayout(){ document.getElementById('workspace').classList.toggle('sidebar-left'); localStorage.setItem('isSidebarLeft', document.getElementById('workspace').classList.contains('sidebar-left')); }
+        function toggleDirectMode(){ isDirectMode = !isDirectMode; document.getElementById('directSwitch').classList.toggle('active', isDirectMode); }
+
         function switchSidebarTab(t){ 
             document.getElementById('tabIndex').classList.toggle('active', t==='index'); 
             document.getElementById('tabBookmark').classList.toggle('active', t==='bookmark'); 
@@ -670,150 +693,77 @@
             document.getElementById('panelBookmark').style.display = t==='bookmark'?'flex':'none'; 
             if(t==='bookmark') renderBookmarks(); 
         }
-        
-        function addBookmark(){ 
-            const p = findCenterPage(); 
-            const t = prompt("書籤名稱：", `Page ${p}`); 
-            if(t){ 
-                bookmarks.push({id:Date.now(), title:t, page:p}); 
-                renderBookmarks(); 
-                saveToLocal(); 
-            } 
-        }
-        
-        function findCenterPage(){ 
-            const ps = document.querySelectorAll('.pdf-page'), c = document.getElementById('viewerContainer'), cr = c.getBoundingClientRect(); 
-            let bp=1, md=Infinity; 
-            ps.forEach(p=>{ 
-                const r=p.getBoundingClientRect(), d=Math.abs((r.top+r.height/2)-(cr.top+cr.height/2)); 
-                if(d<md){ md=d; bp=parseInt(p.dataset.pageNumber); } 
-            }); 
-            return bp; 
-        }
-        
-        function renderBookmarks(){ 
-            const l=document.getElementById('bookmarkList'); l.innerHTML=''; 
-            bookmarks.sort((a,b) => a.page - b.page); 
-            bookmarks.forEach(b => { 
-                l.innerHTML += `
-                    <div class="bookmark-item">
-                        <div onclick="jumpToPage(${b.page})">
-                            <span style="color:#007bff;font-weight:bold;">P.${b.page}</span> ${b.title}
-                        </div>
-                        <button class="icon-btn" onclick="deleteBookmark(${b.id})">🗑️</button>
-                    </div>`; 
-            }); 
-        }
-        
-        function deleteBookmark(id){ 
-            if(confirm('刪除書籤?')){ 
-                bookmarks = bookmarks.filter(b => b.id !== id); 
-                renderBookmarks(); 
-                saveToLocal(); 
-            } 
-        }
 
         // =========================================
-        // 7. PDF 核心 (Core PDF)
+        // 4. 畫線與選取 (Selection Logic - Fixed)
         // =========================================
-        async function handlePdfUpload(i){ 
-            const f=i.files[0]; if(!f) return; 
-            showLoader("解析中..."); 
-            try { 
-                pdfDoc = await pdfjsLib.getDocument(await f.arrayBuffer()).promise; 
-                calculateBatches(); 
-                document.getElementById('placeholder').style.display='none'; 
-                document.getElementById('bottomNav').style.display='flex'; 
-                await renderCurrentBatch(); 
-            } catch(e) { 
-                alert("讀取失敗"); console.error(e); 
-            } finally { 
-                hideLoader(); i.value=''; 
-            } 
+        function enableBoxSelection(pageDiv, pageNum) {
+            pageDiv.addEventListener('mousedown', (e) => {
+                if(isSpacePressed || e.target.closest('.highlight-text, .highlight-area')) return;
+                
+                isMouseDragging = true;
+                activePageDiv = pageDiv;
+                activePageNum = pageNum;
+                
+                const rect = pageDiv.getBoundingClientRect();
+                dragStartX = e.clientX - rect.left;
+                dragStartY = e.clientY - rect.top;
+                
+                currentMarquee = document.createElement('div');
+                currentMarquee.className = 'selection-marquee';
+                currentMarquee.style.left = dragStartX + 'px';
+                currentMarquee.style.top = dragStartY + 'px';
+                pageDiv.appendChild(currentMarquee);
+            });
         }
-        
-        function calculateBatches(){ 
-            totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE); 
-            const s = document.getElementById('jumpSelect'); s.innerHTML = ''; 
-            for(let i=0; i<totalBatches; i++) s.add(new Option(`第 ${i*BATCH_SIZE+1}-${Math.min((i+1)*BATCH_SIZE, pdfDoc.numPages)} 頁`, i)); 
-            updateNav(); 
+
+        function handleGlobalMouseMove(e) {
+            if (!isMouseDragging || !activePageDiv) return;
+            
+            const rect = activePageDiv.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            const width = Math.abs(currentX - dragStartX);
+            const height = Math.abs(currentY - dragStartY);
+            const left = Math.min(currentX, dragStartX);
+            const top = Math.min(currentY, dragStartY);
+            
+            if (currentMarquee) {
+                currentMarquee.style.width = width + 'px';
+                currentMarquee.style.height = height + 'px';
+                currentMarquee.style.left = left + 'px';
+                currentMarquee.style.top = top + 'px';
+            }
         }
-        
-        async function renderCurrentBatch(){ 
-            if(!pdfDoc) return; 
-            showLoader("載入中..."); 
-            document.querySelectorAll('.pdf-page').forEach(p => p.remove()); 
-            document.getElementById('jumpSelect').value = currentBatchIndex; 
-            updateNav(); 
-            for(let i = (currentBatchIndex * BATCH_SIZE) + 1; i <= Math.min((currentBatchIndex + 1) * BATCH_SIZE, pdfDoc.numPages); i++) await renderPage(i); 
-            hideLoader(); 
-        }
-        
-        async function renderPage(n){ 
-            const p = await pdfDoc.getPage(n), v = p.getViewport({scale: currentScale}); 
-            const d = document.createElement('div'); d.className = 'pdf-page'; 
-            d.style.width = v.width+'px'; d.style.height = v.height+'px'; d.dataset.pageNumber = n; 
-            d.style.cursor = editMode==='text'?'text':'crosshair'; 
+
+        function handleGlobalMouseUp(e) {
+            if (!isMouseDragging) return;
+            isMouseDragging = false;
             
-            const c = document.createElement('canvas'); c.width = v.width; c.height = v.height; 
-            const t = document.createElement('div'); t.className = 'textLayer'; t.style.width = v.width+'px'; t.style.height = v.height+'px'; 
-            d.append(c, t); 
-            document.getElementById('viewerContainer').appendChild(d); 
-            
-            await p.render({canvasContext: c.getContext('2d'), viewport: v}).promise; 
-            pdfjsLib.renderTextLayer({textContent: await p.getTextContent(), container: t, viewport: v, textDivs: []}); 
-            
-            if(!isReaderMode) enableBoxSelection(d, n); 
-            restoreHighlights(n, d); 
-        }
-        
-        // =========================================
-        // 8. 畫線與選取 (Selection & Drawing)
-        // =========================================
-        function enableBoxSelection(div, n){
-            let isD = false, sx, sy, m = null;
-            
-            div.onmousedown = e => { 
-                if(isSpacePressed || e.target.closest('.highlight-text, .highlight-area')) return; 
-                isD = true; 
-                const r = div.getBoundingClientRect(); sx = e.clientX - r.left; sy = e.clientY - r.top; 
-                m = document.createElement('div'); m.className = 'selection-marquee'; m.style.left = sx+'px'; m.style.top = sy+'px'; div.appendChild(m); 
-            };
-            
-            window.onmousemove = e => { 
-                if(!isD) return; 
-                const r = div.getBoundingClientRect(), cx = e.clientX - r.left, cy = e.clientY - r.top; 
-                m.style.width = Math.abs(cx - sx)+'px'; m.style.height = Math.abs(cy - sy)+'px'; 
-                m.style.left = Math.min(cx, sx)+'px'; m.style.top = Math.min(cy, sy)+'px'; 
-            };
-            
-            window.onmouseup = () => { 
-                if(!isD) return; 
-                isD = false; 
-                if(m) { 
-                    const w = parseFloat(m.style.width), h = parseFloat(m.style.height), l = parseFloat(m.style.left), t = parseFloat(m.style.top); 
-                    m.remove(); 
-                    if(w > 5 && h > 5) processSelection(n, {left:l, top:t, width:w, height:h}, div); 
-                } 
-            };
+            if (currentMarquee) {
+                const width = parseFloat(currentMarquee.style.width);
+                const height = parseFloat(currentMarquee.style.height);
+                const left = parseFloat(currentMarquee.style.left);
+                const top = parseFloat(currentMarquee.style.top);
+                
+                currentMarquee.remove();
+                currentMarquee = null;
+                
+                if (width > 5 && height > 5 && activePageDiv) {
+                    processSelection(activePageNum, {left, top, width, height}, activePageDiv);
+                }
+            }
+            activePageDiv = null;
         }
 
         function processSelection(p, r, div){
             const nr = {left: r.left/currentScale, top: r.top/currentScale, width: r.width/currentScale, height: r.height/currentScale};
-            
             if(editMode === 'text'){
                 let txt = "", s = div.querySelectorAll('.textLayer span'), hs = []; 
-                s.forEach(el => { 
-                    if(!(el.offsetLeft+el.offsetWidth < r.left || el.offsetLeft > r.left+r.width || el.offsetTop+el.offsetHeight < r.top || el.offsetTop > r.top+r.height)) 
-                        hs.push(el); 
-                });
-                hs.sort((a,b) => Math.abs(a.offsetTop - b.offsetTop) < 10 ? a.offsetLeft - b.offsetLeft : a.offsetTop - b.offsetTop)
-                  .forEach(e => txt += e.innerText+" ");
-                
-                if(txt.trim()) { 
-                    currentSelection = {id: null, type: 'text', page: p, text: txt.trim(), rect: nr}; 
-                    if(isDirectMode) quickSave(); else openModal(); 
-                }
+                s.forEach(el => { if(!(el.offsetLeft+el.offsetWidth < r.left || el.offsetLeft > r.left+r.width || el.offsetTop+el.offsetHeight < r.top || el.offsetTop > r.top+r.height)) hs.push(el); });
+                hs.sort((a,b) => Math.abs(a.offsetTop - b.offsetTop) < 10 ? a.offsetLeft - b.offsetLeft : a.offsetTop - b.offsetTop).forEach(e => txt += e.innerText+" ");
+                if(txt.trim()) { currentSelection = {id: null, type: 'text', page: p, text: txt.trim(), rect: nr}; if(isDirectMode) quickSave(); else openModal(); }
             } else {
                 const c = document.createElement('canvas'); c.width = r.width; c.height = r.height; 
                 c.getContext('2d').drawImage(div.querySelector('canvas'), r.left, r.top, r.width, r.height, 0, 0, r.width, r.height);
@@ -822,24 +772,14 @@
             }
         }
 
-        function genId(){ 
-            let m = 0; 
-            annotations.forEach(a => { const v = (a.rtmId || "").match(/^REQ-(\d+)$/); if(v) m = Math.max(m, parseInt(v[1])); }); 
-            return `REQ-${String(m + 1).padStart(4, '0')}`; 
-        }
-
+        // =========================================
+        // 5. 標註與功能核心
+        // =========================================
+        function genId(){ let m = 0; annotations.forEach(a => { const v = (a.rtmId || "").match(/^REQ-(\d+)$/); if(v) m = Math.max(m, parseInt(v[1])); }); return `REQ-${String(m + 1).padStart(4, '0')}`; }
+        
         function quickSave(){ 
             const newId = Date.now().toString();
-            annotations.push({
-                id: newId, 
-                ...currentSelection, 
-                rtmId: genId(), 
-                title: currentSelection.text.substring(0, 10), 
-                code: lastUsedSettings.code, 
-                color: lastUsedSettings.color, 
-                priority: 'Medium', status: 'New', memo: '', 
-                timestamp: new Date().toISOString()
-            }); 
+            annotations.push({id: newId, ...currentSelection, rtmId: genId(), title: currentSelection.text.substring(0, 10), code: lastUsedSettings.code, color: lastUsedSettings.color, priority: 'Medium', status: 'New', memo: '', timestamp: new Date().toISOString()}); 
             renderSidebar(); saveToLocal(); renderCurrentBatch(); 
         }
 
@@ -859,29 +799,16 @@
         function confirmAnnotation(){
             const cd = {}; document.querySelectorAll('#customFieldsContainer input').forEach(i => cd[i.dataset.key] = i.value);
             const nd = {
-                type: currentSelection.type, 
-                page: currentSelection.page, 
+                type: currentSelection.type, page: currentSelection.page, 
                 text: currentSelection.type === 'text' ? document.getElementById('quotePreview').innerText : currentSelection.text, 
-                rect: currentSelection.rect, 
-                imageData: currentSelection.imageData, 
-                rtmId: document.getElementById('rtmId').value, 
-                title: document.getElementById('rtmTitle').value, 
-                code: document.getElementById('codeName').value, 
-                color: document.getElementById('codeColor').value, 
-                priority: document.getElementById('rtmPriority').value, 
-                status: document.getElementById('rtmStatus').value, 
-                memo: document.getElementById('codeMemo').innerHTML, 
-                customData: cd, 
-                timestamp: new Date().toISOString()
+                rect: currentSelection.rect, imageData: currentSelection.imageData, 
+                rtmId: document.getElementById('rtmId').value, title: document.getElementById('rtmTitle').value, 
+                code: document.getElementById('codeName').value, color: document.getElementById('codeColor').value, 
+                priority: document.getElementById('rtmPriority').value, status: document.getElementById('rtmStatus').value, 
+                memo: document.getElementById('codeMemo').innerHTML, customData: cd, timestamp: new Date().toISOString()
             };
             lastUsedSettings = {code: nd.code, color: nd.color};
-            
-            if(currentSelection.id){ 
-                const i = annotations.findIndex(a => a.id === currentSelection.id); 
-                annotations[i] = {...annotations[i], ...nd}; 
-            } else {
-                annotations.push({id: Date.now().toString(), ...nd});
-            }
+            if(currentSelection.id){ const i = annotations.findIndex(a => a.id === currentSelection.id); annotations[i] = {...annotations[i], ...nd}; } else { annotations.push({id: Date.now().toString(), ...nd}); }
             renderSidebar(); saveToLocal(); closeModal(); renderCurrentBatch();
         }
 
@@ -889,143 +816,157 @@
             annotations.filter(a => a.page === p).forEach(a => {
                 if(a.type === 'text') {
                     div.querySelectorAll('.textLayer span').forEach(s => { 
-                        if(s.innerText.length > 1 && a.text.includes(s.innerText)){ 
-                            s.classList.add('highlight-text'); s.style.borderBottomColor = a.color; 
-                            s.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); }
-                        } 
+                        if(s.innerText.length > 1 && a.text.includes(s.innerText)){ s.classList.add('highlight-text'); s.style.borderBottomColor = a.color; s.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); } } 
                     });
                 } else { 
                     const d = document.createElement('div'); d.className = 'highlight-area'; d.id = 'area-' + a.id; 
                     d.style.left = (a.rect.left * currentScale) + 'px'; d.style.top = (a.rect.top * currentScale) + 'px'; 
                     d.style.width = (a.rect.width * currentScale) + 'px'; d.style.height = (a.rect.height * currentScale) + 'px'; 
-                    d.style.borderColor = a.color; 
-                    d.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); }; 
-                    div.appendChild(d); 
+                    d.style.borderColor = a.color; d.onclick = (e) => { e.stopPropagation(); jumpAndEdit(a.id); }; div.appendChild(d); 
                 }
             });
         }
 
-        function scrollToAnnotation(a){ 
-            const b = Math.floor((a.page - 1) / BATCH_SIZE); 
-            if(b !== currentBatchIndex){ 
-                currentBatchIndex = b; 
-                renderCurrentBatch().then(() => setTimeout(() => doScroll(a), 500)); 
-            } else doScroll(a); 
-        }
-
-        function doScroll(a){ 
-            const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`); 
-            if(el){ 
-                el.scrollIntoView({behavior: 'smooth', block: 'center'}); 
-                if(a.type !== 'area') el.classList.add('highlight-flash'); 
-            } 
-        }
-
         // =========================================
-        // 9. 側邊欄與預覽 (Sidebar Preview)
+        // 6. 側邊欄與連結 (Wiki Links)
         // =========================================
-        function openDataPreview() {
-            if(annotations.length === 0) return alert("目前沒有資料可以預覽");
-            
-            let html = '<table class="data-table"><thead><tr>';
-            const headers = ['ID', 'Page', 'Title', 'Category', 'Priority', 'Status', 'Text/Content'];
-            customFields.forEach(f => headers.push(f.label)); 
-            headers.push('Memo');
-            
-            headers.forEach(h => html += `<th>${h}</th>`);
-            html += '</tr></thead><tbody>';
-            
-            annotations.forEach(a => {
-                html += '<tr>';
-                html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`;
-                html += `<td>${a.type==='area' ? '[圖片]' : a.text}</td>`;
-                customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; });
-                html += `<td>${a.memo}</td></tr>`;
+        function renderSidebar() {
+            const list = document.getElementById('sidebarList'); list.innerHTML = '';
+            const filterVal = document.getElementById('sidebarFilter').value;
+            const searchVal = document.getElementById('sidebarSearchInput').value.toLowerCase().trim();
+            document.getElementById('count').innerText = annotations.length;
+
+            let filtered = annotations.filter(a => {
+                if(filterVal === 'High' && a.priority !== 'High') return false;
+                if(filterVal === 'Pending' && a.status !== 'Pending') return false;
+                if(filterVal === 'Image' && a.type !== 'area') return false;
+                if(searchVal) {
+                    const match = (a.title && a.title.toLowerCase().includes(searchVal)) || (a.code && a.code.toLowerCase().includes(searchVal)) || (a.rtmId && a.rtmId.toLowerCase().includes(searchVal)) || (a.text && a.text.toLowerCase().includes(searchVal)) || (a.memo && a.memo.toLowerCase().includes(searchVal));
+                    if(!match) return false;
+                }
+                return true;
             });
-            html += '</tbody></table>';
-            
-            document.getElementById('previewContent').innerHTML = html;
-            document.getElementById('previewModal').style.display = 'flex';
+            filtered.sort((a,b) => a.page - b.page);
+
+            filtered.forEach(a => {
+                const d = document.createElement('div'); d.className = 'list-item'; d.style.borderLeftColor = a.color;
+                const displayMemo = formatMemoLinks(a.memo);
+                d.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;"><span>P.${a.page} ${a.type==='area'?'🖼️':'📝'}</span><span>${a.priority}</span></div>
+                    <div style="font-weight:bold;margin:4px 0;font-size:1em;">${a.title||a.code}</div>
+                    <div style="margin-bottom:4px;"><span class="tag-badge" style="background:${a.color}">${a.code}</span></div>
+                    <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${a.rtmId ? `<b>[${a.rtmId}]</b> ` : ''}${a.text}</div>
+                    <div class="memo-content" style="margin-top:5px;border-top:1px dashed #eee;padding-top:5px;font-size:0.85em;color:#444;">${displayMemo}</div>
+                    <div class="item-actions"><button class="icon-btn" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button><button class="icon-btn" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button></div>`;
+                d.onclick = () => scrollToAnnotation(a);
+                d.querySelectorAll('img').forEach(img => { img.onclick = (e) => { e.stopPropagation(); showLightbox(img.src); }});
+                list.appendChild(d);
+            });
         }
 
-        // =========================================
-        // 10. 輔助工具 (Utilities)
-        // =========================================
-        function showLightbox(s){ document.getElementById('lightboxImg').src = s; document.getElementById('imageLightbox').style.display = 'flex'; }
+        function formatMemoLinks(html) { if(!html) return ""; return html.replace(/\[\[(.*?)\]\]/g, (match, ref) => { return `<span class="memo-link" onclick="event.stopPropagation(); handleWikiLink('${ref}')">${match}</span>`; }); }
         
-        function makeDraggable(e, h){
-            let p1=0, p2=0, p3=0, p4=0;
-            h.onmousedown = ev => { 
-                ev.preventDefault(); p3 = ev.clientX; p4 = ev.clientY; 
-                document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; }; 
-                document.onmousemove = v => { 
-                    v.preventDefault(); p1 = p3 - v.clientX; p2 = p4 - v.clientY; p3 = v.clientX; p4 = v.clientY; 
-                    e.style.top = (e.offsetTop - p2) + "px"; e.style.left = (e.offsetLeft - p1) + "px"; 
-                } 
-            };
-        }
-
-        function saveToLocal(){ if(!isReaderMode) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({annotations, bookmarks, globalMemo})); }
-        
-        function checkAutoSave(){
-            const s = localStorage.getItem(AUTOSAVE_KEY);
-            if(s){
-                try {
-                    const d = JSON.parse(s);
-                    if((d.annotations.length || d.bookmarks.length) && confirm("復原未存檔的標註紀錄?")){
-                        annotations = d.annotations; bookmarks = d.bookmarks || []; globalMemo = d.globalMemo || ""; 
-                        renderSidebar(); renderBookmarks();
-                    }
-                } catch(e){}
+        function handleWikiLink(ref) {
+            const target = annotations.find(a => a.rtmId === ref || a.title === ref || a.code === ref);
+            if(target) {
+                scrollToAnnotation(target);
+                setTimeout(() => {
+                   const el = document.getElementById('area-'+target.id) || document.querySelector(`.pdf-page[data-page-number="${target.page}"]`);
+                   if(el) { const originalOutline = el.style.outline; el.style.outline = "5px solid cyan"; setTimeout(() => el.style.outline = originalOutline, 1500); }
+                }, 800);
+            } else {
+                // 如果找不到，幫忙搜尋
+                if(confirm(`找不到 "${ref}"。是否搜尋？`)) { 
+                    toggleAdvancedUI(); // 確保 UI 是展開的
+                    document.getElementById('sidebarSearchInput').value = ref; 
+                    renderSidebar(); 
+                    switchSidebarTab('index'); 
+                }
             }
         }
 
-        function saveProject(){ 
-            download(JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, lastBatch: currentBatchIndex}), `Proj_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); 
+        // =========================================
+        // 7. AI & PDF 核心
+        // =========================================
+        function openAIModal() {
+            const list = document.getElementById('aiSelectionList'); list.innerHTML = '';
+            annotations.forEach(a => {
+                const div = document.createElement('div'); div.className = 'ai-item';
+                div.innerHTML = `<input type="checkbox" value="${a.id}" id="ai_chk_${a.id}"> <label for="ai_chk_${a.id}">[${a.rtmId}] ${a.title || a.text.substring(0,20)}</label>`;
+                list.appendChild(div);
+            });
+            updateAIPromptPreview();
+            document.getElementById('aiModal').style.display = 'flex';
+        }
+        function selectAllForAI() { document.querySelectorAll('#aiSelectionList input').forEach(c => c.checked = true); updateAIPromptPreview(); }
+        function updateAIPromptPreview() {
+            const tmpl = document.getElementById('aiTemplate').value;
+            const ids = Array.from(document.querySelectorAll('#aiSelectionList input:checked')).map(c => c.value);
+            const selAnns = annotations.filter(a => ids.includes(a.id));
+            let context = selAnns.map(a => `【ID: ${a.rtmId} | 標題: ${a.title}】\n內容: ${a.text}\n筆記: ${a.memo.replace(/<[^>]+>/g,'')}`).join('\n\n----------------\n\n');
+            if(!context) context = "(請先勾選上方的資料)";
+            let prompt = "";
+            switch(tmpl) {
+                case 'summary': prompt = "請幫我總結以下標註內容，歸納出重點摘要：\n\n"; break;
+                case 'explain': prompt = "請用白話文解釋以下這段內容的含義，並舉例說明：\n\n"; break;
+                case 'check': prompt = "請檢查以下內容是否存在邏輯矛盾或不明確之處：\n\n"; break;
+                case 'qa': prompt = "請根據以下內容，出 3 題測試理解度的選擇題（附答案）：\n\n"; break;
+                default: prompt = "請根據以下資料回答問題：\n\n";
+            }
+            document.getElementById('aiOutput').value = prompt + context;
+        }
+        function copyAIToClipboard() {
+            const txt = document.getElementById('aiOutput'); txt.select(); document.execCommand('copy');
+            alert("✅ Prompt 已複製！請切換到 ChatGPT/Claude 貼上。");
         }
 
-        function handleProjectLoad(i){
-            const r = new FileReader();
-            r.onload = e => {
-                const d = JSON.parse(e.target.result);
-                annotations = d.annotations || []; bookmarks = d.bookmarks || []; tagPresets = d.presets || tagPresets; globalMemo = d.globalMemo || ""; currentBatchIndex = d.lastBatch || 0;
-                renderSidebar(); renderBookmarks(); saveToLocal(); renderCurrentBatch();
-            };
-            r.readAsText(i.files[0]); i.value = '';
-        }
-
-        function exportReaderHtml(){ 
-            let h = document.documentElement.outerHTML; 
-            const d = JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo}); 
-            download(h.replace(/<script id="embedded-data".*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`), 'Reader.html', 'text/html'); 
-        }
+        async function handlePdfUpload(i){ const f=i.files[0]; if(!f) return; showLoader("解析中..."); try { pdfDoc = await pdfjsLib.getDocument(await f.arrayBuffer()).promise; calculateBatches(); document.getElementById('placeholder').style.display='none'; document.getElementById('bottomNav').style.display='flex'; await renderCurrentBatch(); } catch(e) { alert("讀取失敗"); console.error(e); } finally { hideLoader(); i.value=''; } }
+        function calculateBatches(){ totalBatches = Math.ceil(pdfDoc.numPages / BATCH_SIZE); const s = document.getElementById('jumpSelect'); s.innerHTML = ''; for(let i=0; i<totalBatches; i++) s.add(new Option(`第 ${i*BATCH_SIZE+1}-${Math.min((i+1)*BATCH_SIZE, pdfDoc.numPages)} 頁`, i)); updateNav(); }
+        async function renderCurrentBatch(){ if(!pdfDoc) return; showLoader("載入中..."); document.querySelectorAll('.pdf-page').forEach(p => p.remove()); document.getElementById('jumpSelect').value = currentBatchIndex; updateNav(); for(let i = (currentBatchIndex * BATCH_SIZE) + 1; i <= Math.min((currentBatchIndex + 1) * BATCH_SIZE, pdfDoc.numPages); i++) await renderPage(i); hideLoader(); }
+        async function renderPage(n){ const p = await pdfDoc.getPage(n), v = p.getViewport({scale: currentScale}); const d = document.createElement('div'); d.className = 'pdf-page'; d.style.width = v.width+'px'; d.style.height = v.height+'px'; d.dataset.pageNumber = n; d.style.cursor = editMode==='text'?'text':'crosshair'; const c = document.createElement('canvas'); c.width = v.width; c.height = v.height; const t = document.createElement('div'); t.className = 'textLayer'; t.style.width = v.width+'px'; t.style.height = v.height+'px'; d.append(c, t); document.getElementById('viewerContainer').appendChild(d); await p.render({canvasContext: c.getContext('2d'), viewport: v}).promise; pdfjsLib.renderTextLayer({textContent: await p.getTextContent(), container: t, viewport: v, textDivs: []}); if(!isReaderMode) enableBoxSelection(d, n); restoreHighlights(n, d); }
+        
+        function scrollToAnnotation(a){ const b = Math.floor((a.page - 1) / BATCH_SIZE); if(b !== currentBatchIndex){ currentBatchIndex = b; renderCurrentBatch().then(() => setTimeout(() => doScroll(a), 500)); } else doScroll(a); }
+        function doScroll(a){ const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`); if(el){ el.scrollIntoView({behavior: 'smooth', block: 'center'}); if(a.type !== 'area') el.classList.add('highlight-flash'); } }
+        
+        // =========================================
+        // 8. 輔助工具
+        // =========================================
+        function showLightbox(s){ document.getElementById('lightboxImg').src = s; document.getElementById('imageLightbox').style.display = 'flex'; }
+        function makeDraggable(e, h){ let p1=0, p2=0, p3=0, p4=0; h.onmousedown = ev => { ev.preventDefault(); p3 = ev.clientX; p4 = ev.clientY; document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; }; document.onmousemove = v => { v.preventDefault(); p1 = p3 - v.clientX; p2 = p4 - v.clientY; p3 = v.clientX; p4 = v.clientY; e.style.top = (e.offsetTop - p2) + "px"; e.style.left = (e.offsetLeft - p1) + "px"; } }; }
+        function saveToLocal(){ if(!isReaderMode) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({annotations, bookmarks, globalMemo})); }
+        function checkAutoSave(){ const s = localStorage.getItem(AUTOSAVE_KEY); if(s){ try { const d = JSON.parse(s); if((d.annotations.length || d.bookmarks.length) && confirm("復原未存檔?")){ annotations = d.annotations; bookmarks = d.bookmarks || []; globalMemo = d.globalMemo || ""; renderSidebar(); renderBookmarks(); } } catch(e){} } }
+        function saveProject(){ download(JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, lastBatch: currentBatchIndex}), `Proj_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); }
+        function handleProjectLoad(i){ const r = new FileReader(); r.onload = e => { const d = JSON.parse(e.target.result); annotations = d.annotations || []; bookmarks = d.bookmarks || []; tagPresets = d.presets || tagPresets; globalMemo = d.globalMemo || ""; currentBatchIndex = d.lastBatch || 0; renderSidebar(); renderBookmarks(); saveToLocal(); renderCurrentBatch(); }; r.readAsText(i.files[0]); i.value = ''; }
+        function exportReaderHtml(){ let h = document.documentElement.outerHTML; const d = JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo}); download(h.replace(/<script id="embedded-data".*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`), 'Reader.html', 'text/html'); }
+        
+        function openDataPreview() { if(annotations.length === 0) return alert("無資料"); let html = '<table class="data-table"><thead><tr>'; const headers = ['ID', 'Page', 'Title', 'Category', 'Priority', 'Status', 'Text/Content']; customFields.forEach(f => headers.push(f.label)); headers.push('Memo'); headers.forEach(h => html += `<th>${h}</th>`); html += '</tr></thead><tbody>'; annotations.forEach(a => { html += '<tr>'; html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`; html += `<td>${a.type==='area' ? '[圖片]' : a.text}</td>`; customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; }); html += `<td>${a.memo}</td></tr>`; }); html += '</tbody></table>'; document.getElementById('previewContent').innerHTML = html; document.getElementById('previewModal').style.display = 'flex'; }
+        
+        async function exportExcel(){ if(!annotations.length) return alert("無資料"); const w = new ExcelJS.Workbook(), s = w.addWorksheet('RTM'); s.columns = [{header: 'ID', key: 'id'}, {header: 'Title', key: 't'}, {header: 'Text', key: 'txt'}, {header: 'Memo', key: 'm'}]; annotations.forEach(a => s.addRow({id: a.rtmId, t: a.title, txt: a.text, m: a.memo.replace(/<[^>]+>/g, '')})); download(await w.xlsx.writeBuffer(), 'RTM.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }
+        async function performGlobalSearch(){ const q = document.getElementById('globalSearchInput').value; if(!q) return; const l = document.getElementById('searchResultsList'); l.innerHTML = '搜尋中...'; document.getElementById('searchPanel').style.display = 'flex'; let r = []; for(let i = 1; i <= pdfDoc.numPages; i++){ const t = (await(await pdfDoc.getPage(i)).getTextContent()).items.map(s => s.str).join(''); if(t.includes(q)) r.push({p: i, t: t.substring(t.indexOf(q) - 10, t.indexOf(q) + 20)}); } l.innerHTML = r.length ? '' : '無結果'; r.forEach(x => l.innerHTML += `<div class="search-item" onclick="jumpToPage(${x.p})">P.${x.p} ...${x.t}...</div>`); }
+        function jumpToPage(p){ currentBatchIndex = Math.floor((p - 1) / BATCH_SIZE); renderCurrentBatch().then(() => setTimeout(() => scrollToP(p), 500)); }
+        function scrollToP(p){ const el = document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+        function closeSearch(){ document.getElementById('searchPanel').style.display = 'none'; }
+        
+        function addBookmark(){ const p = findCenterPage(); const t = prompt("書籤名稱：", `Page ${p}`); if(t){ bookmarks.push({id:Date.now(), title:t, page:p}); renderBookmarks(); saveToLocal(); } }
+        function findCenterPage(){ const ps = document.querySelectorAll('.pdf-page'), c = document.getElementById('viewerContainer'), cr = c.getBoundingClientRect(); let bp=1, md=Infinity; ps.forEach(p=>{ const r=p.getBoundingClientRect(), d=Math.abs((r.top+r.height/2)-(cr.top+cr.height/2)); if(d<md){ md=d; bp=parseInt(p.dataset.pageNumber); } }); return bp; }
+        function renderBookmarks(){ const l=document.getElementById('bookmarkList'); l.innerHTML=''; bookmarks.sort((a,b) => a.page - b.page); bookmarks.forEach(b => { l.innerHTML += `<div class="bookmark-item"><div onclick="jumpToPage(${b.page})"><span style="color:#007bff;font-weight:bold;">P.${b.page}</span> ${b.title}</div><button class="icon-btn" onclick="deleteBookmark(${b.id})">🗑️</button></div>`; }); }
+        function deleteBookmark(id){ if(confirm('刪除書籤?')){ bookmarks = bookmarks.filter(b => b.id !== id); renderBookmarks(); saveToLocal(); } }
 
         function download(c, n, t){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], {type: t})); a.download = n; a.click(); }
         function showLoader(t){ document.getElementById('loader').style.display = 'flex'; } 
         function hideLoader(){ document.getElementById('loader').style.display = 'none'; }
-        
         function jumpAndEdit(id){ const a = annotations.find(x => x.id === id); if(a){ currentSelection = {...a}; scrollToAnnotation(a); setTimeout(() => openModal(a), 600); } }
         function deleteItem(id){ if(confirm('刪除?')){ annotations = annotations.filter(x => x.id !== id); renderSidebar(); saveToLocal(); renderCurrentBatch(); } }
-        
         function memoExec(c){ document.execCommand(c === 'hilite' ? 'hiliteColor' : (c === 'checkbox' ? 'insertHTML' : 'removeFormat'), false, c === 'hilite' ? '#ffeb3b' : (c === 'checkbox' ? '&#x2610; ' : null)); }
         function globalMemoExec(c){ document.getElementById('globalMemoEditor').focus(); memoExec(c); }
         function openGlobalMemo(){ document.getElementById('globalMemoEditor').innerHTML = globalMemo; document.getElementById('globalMemoModal').style.display = 'flex'; }
         function saveGlobalMemo(){ globalMemo = document.getElementById('globalMemoEditor').innerHTML; saveToLocal(); document.getElementById('globalMemoModal').style.display = 'none'; }
-        
-        // =========================================
-        // 11. 設定與全域搜尋 (Settings & Global Search)
-        // =========================================
-        function openSettings(){
-            const l = document.getElementById('presetList'); l.innerHTML = '';
-            tagPresets.forEach((t, i) => l.innerHTML += `<div style="border:1px solid ${t.color};padding:2px 5px;cursor:pointer;" onclick="tagPresets.splice(${i}, 1); openSettings()">● ${t.name} ×</div>`);
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
+        function openSettings(){ const l = document.getElementById('presetList'); l.innerHTML = ''; tagPresets.forEach((t, i) => l.innerHTML += `<div style="border:1px solid ${t.color};padding:2px 5px;cursor:pointer;" onclick="tagPresets.splice(${i}, 1); openSettings()">● ${t.name} ×</div>`); document.getElementById('settingsModal').style.display = 'flex'; }
         function addPreset(){ tagPresets.push({name: document.getElementById('newTagName').value, color: '#17a2b8'}); openSettings(); }
         function renderQuickTags(){ const a = document.getElementById('quickTagArea'); a.innerHTML = ''; tagPresets.forEach(t => a.innerHTML += `<div class="mode-btn" style="border:1px solid ${t.color}" onclick="document.getElementById('codeName').value='${t.name}';document.getElementById('codeColor').value='${t.color}'">${t.name}</div>`); }
         function loadFromTemplate(s){ const t = localStorage.getItem(TEMPLATE_KEY); if(t){ const d = JSON.parse(t); tagPresets = d.presets; customFields = d.customFields; if(!s) openSettings(); } else if(!s) alert("無樣板"); }
         function saveAsTemplate(){ localStorage.setItem(TEMPLATE_KEY, JSON.stringify({presets: tagPresets, customFields})); alert("已儲存"); }
         function resetAllData(){ localStorage.clear(); location.reload(); }
-        
         function updateNav(){ document.getElementById('btnPrev').disabled = currentBatchIndex === 0; document.getElementById('btnNext').disabled = currentBatchIndex >= totalBatches - 1; }
         function nextBatch(){ if(currentBatchIndex < totalBatches - 1){ currentBatchIndex++; renderCurrentBatch(); } }
         function prevBatch(){ if(currentBatchIndex > 0){ currentBatchIndex--; renderCurrentBatch(); } }
@@ -1036,29 +977,6 @@
         function checkEmbeddedData(){ const s = document.getElementById('embedded-data'); if(s && s.textContent.trim()){ const d = JSON.parse(s.textContent); annotations = d.annotations; bookmarks = d.bookmarks; isReaderMode = true; document.body.classList.add('mode-read'); renderSidebar(); renderBookmarks(); } }
         function renderCustomFields(d){ const c = document.getElementById('customFieldsContainer'); c.innerHTML = ''; customFields.forEach(f => { c.innerHTML += `<div><label>${f.label}</label><input data-key="${f.key}" value="${d[f.key] || ''}"></div>`; }); c.style.display = customFields.length ? 'block' : 'none'; }
         
-        async function exportExcel(){ 
-            if(!annotations.length) return alert("無資料"); 
-            const w = new ExcelJS.Workbook(), s = w.addWorksheet('RTM'); 
-            s.columns = [{header: 'ID', key: 'id'}, {header: 'Title', key: 't'}, {header: 'Text', key: 'txt'}, {header: 'Memo', key: 'm'}]; 
-            annotations.forEach(a => s.addRow({id: a.rtmId, t: a.title, txt: a.text, m: a.memo.replace(/<[^>]+>/g, '')})); 
-            download(await w.xlsx.writeBuffer(), 'RTM.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); 
-        }
-        
-        async function performGlobalSearch(){ 
-            const q = document.getElementById('globalSearchInput').value; if(!q) return; 
-            const l = document.getElementById('searchResultsList'); l.innerHTML = '搜尋中...'; document.getElementById('searchPanel').style.display = 'flex'; 
-            let r = []; 
-            for(let i = 1; i <= pdfDoc.numPages; i++){ 
-                const t = (await(await pdfDoc.getPage(i)).getTextContent()).items.map(s => s.str).join(''); 
-                if(t.includes(q)) r.push({p: i, t: t.substring(t.indexOf(q) - 10, t.indexOf(q) + 20)}); 
-            } 
-            l.innerHTML = r.length ? '' : '無結果'; 
-            r.forEach(x => l.innerHTML += `<div class="search-item" onclick="jumpToPage(${x.p})">P.${x.p} ...${x.t}...</div>`); 
-        }
-        function jumpToPage(p){ currentBatchIndex = Math.floor((p - 1) / BATCH_SIZE); renderCurrentBatch().then(() => setTimeout(() => scrollToP(p), 500)); }
-        function scrollToP(p){ const el = document.querySelector(`.pdf-page[data-page-number="${p}"]`); if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
-        function closeSearch(){ document.getElementById('searchPanel').style.display = 'none'; }
-
         function handleImageInsert(e) {
             const file = e.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -1069,6 +987,7 @@
             reader.readAsDataURL(file); e.target.value = '';
         }
         function triggerImageUpload(targetId) { activeMemoId = targetId; document.getElementById('imageUploadInput').click(); }
+        function insertLinkPlaceholder() { document.execCommand('insertText', false, '[[ID或關鍵字]]'); }
         function setMode(m) { editMode = m; document.getElementById('modeText').classList.toggle('active', m === 'text'); document.getElementById('modeArea').classList.toggle('active', m === 'area'); document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : 'crosshair'); }
     </script>
 </body>
