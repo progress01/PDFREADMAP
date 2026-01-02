@@ -1173,5 +1173,325 @@
         function insertLinkPlaceholder() { document.execCommand('insertText', false, '[[ID或關鍵字]]'); }
         function setMode(m) { editMode = m; document.getElementById('modeText').classList.toggle('active', m === 'text'); document.getElementById('modeArea').classList.toggle('active', m === 'area'); document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : 'crosshair'); }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        
+        <style>
+            /* Markdown 渲染修正 */
+            .memo-content blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 10px; color: #666; }
+            .memo-content pre { background: #f4f4f4; padding: 5px; border-radius: 4px; overflow-x: auto; }
+            .memo-content code { font-family: monospace; background: #eee; padding: 2px 4px; border-radius: 3px; }
+            .memo-content ul, .memo-content ol { margin: 5px 0; padding-left: 20px; }
+            .memo-content img { max-width: 100%; border: 1px solid #ccc; margin-top: 5px; }
+            
+            /* 懸浮預覽視窗 */
+            #wikiTooltip {
+                display: none; position: fixed; z-index: 9999; background: #fff; 
+                border: 1px solid #999; padding: 10px; border-radius: 4px; 
+                box-shadow: 4px 4px 12px rgba(0,0,0,0.3); max-width: 300px; 
+                font-size: 0.9em; pointer-events: none;
+            }
+            
+            /* 擴充視窗共用樣式 */
+            .patch-modal {
+                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.85); z-index: 6000; justify-content: center; align-items: center;
+            }
+            .patch-card {
+                background: white; width: 80%; height: 85%; border-radius: 8px;
+                display: flex; flex-direction: column; padding: 20px; position: relative;
+                box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            }
+            .patch-close {
+                position: absolute; top: 10px; right: 15px; font-size: 1.5em; 
+                cursor: pointer; color: #666;
+            }
+            .patch-body { flex: 1; overflow-y: auto; padding: 10px; }
+            
+            /* 儀表板佈局 */
+            .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; height: 100%; }
+            .chart-container { flex: 1; min-width: 300px; min-height: 300px; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
+        
+            /* 連結特效 */
+            .memo-link:hover { background-color: rgba(255, 255, 0, 0.3); text-decoration: none; }
+        </style>
+        
+        <div id="wikiTooltip"></div>
+        
+        <div id="graphModal" class="patch-modal">
+            <div class="patch-card">
+                <span class="patch-close" onclick="document.getElementById('graphModal').style.display='none'">×</span>
+                <h2 style="margin-top:0;">🕸️ 知識關聯圖 (Mermaid Graph)</h2>
+                <div class="patch-body" style="background:#f9f9f9; border:1px solid #ddd; display:flex; justify-content:center; align-items:center;">
+                    <div id="mermaidGraph" style="width:100%; text-align:center;"></div>
+                </div>
+                <div style="text-align:center; padding-top:10px; color:#666; font-size:0.8em;">
+                    系統會自動分析筆記中的 [[ID]] 或 [[標題]] 連結並繪製成圖。
+                </div>
+            </div>
+        </div>
+        
+        <div id="dashboardModal" class="patch-modal">
+            <div class="patch-card">
+                <span class="patch-close" onclick="document.getElementById('dashboardModal').style.display='none'">×</span>
+                <h2 style="margin-top:0;">📊 數據統計儀表板</h2>
+                <div class="patch-body dashboard-grid">
+                    <div class="chart-container">
+                        <h4 style="text-align:center; margin:0 0 10px 0;">優先級分佈 (Priority)</h4>
+                        <canvas id="chartPriority"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4 style="text-align:center; margin:0 0 10px 0;">標籤類別統計 (Category)</h4>
+                        <canvas id="chartCategory"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="batchTagModal" class="patch-modal">
+            <div class="patch-card" style="width:500px; height:auto; max-height:80vh;">
+                <span class="patch-close" onclick="document.getElementById('batchTagModal').style.display='none'">×</span>
+                <h2 style="margin-top:0;">🏷️ 標籤批次管理</h2>
+                <div class="patch-body">
+                    <p style="color:#666; font-size:0.9em;">將舊標籤統一修改為新名稱或新顏色。</p>
+                    <label>選擇舊標籤</label>
+                    <select id="batchOldTag" onchange="updateBatchColorPreview()" style="margin-bottom:10px;"></select>
+                    
+                    <label>新名稱 (留空則不改名)</label>
+                    <input type="text" id="batchNewName" placeholder="輸入新標籤名稱..." style="margin-bottom:10px;">
+                    
+                    <label>新顏色</label>
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <input type="color" id="batchNewColor" style="height:38px; width:50px;">
+                        <span id="batchCountBadge" style="padding:8px; background:#eee; border-radius:4px; font-size:0.9em;">影響筆數: 0</span>
+                    </div>
+                    
+                    <button class="primary" style="width:100%" onclick="applyBatchTagUpdate()">🚀 執行批次更新</button>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        /**
+         * Patch Initialization
+         */
+        setTimeout(() => {
+            initPatchUI();
+            enablePasteImage();
+            mermaid.initialize({ startOnLoad: false, theme: 'default' });
+        }, 1500); // 延遲執行確保主程式已載入
+        
+        // --- A. UI 整合 (將按鈕插入原本的工具列) ---
+        function initPatchUI() {
+            const bar = document.getElementById('advancedToolbar');
+            if(!bar) return;
+            
+            // 建立分隔線
+            const sep = document.createElement('span'); 
+            sep.innerHTML = '|'; sep.style.color = '#555';
+            bar.appendChild(sep);
+        
+            // 建立按鈕
+            const btnGraph = createPatchBtn('🕸️ 關聯圖', openGraphModal);
+            const btnDash = createPatchBtn('📊 統計', openDashboardModal);
+            const btnBatch = createPatchBtn('🏷️ 管理標籤', openBatchTagModal);
+            
+            bar.appendChild(btnGraph);
+            bar.appendChild(btnDash);
+            bar.appendChild(btnBatch);
+            
+            console.log("✅ V11.5 Patch UI 載入完成");
+        }
+        
+        function createPatchBtn(text, func) {
+            const btn = document.createElement('button');
+            btn.innerText = text;
+            btn.onclick = func;
+            btn.style.marginLeft = "10px";
+            btn.className = "info"; // 使用既有的藍色樣式
+            return btn;
+        }
+        
+        // --- B. Markdown & Tooltip & Image Paste ---
+        
+        function enablePasteImage() {
+            const memoBox = document.getElementById('codeMemo');
+            if (!memoBox) return;
+            memoBox.addEventListener('paste', function(e) {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        const blob = items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            document.execCommand('insertHTML', false, `<img src="${event.target.result}" style="max-width:100%; margin:5px 0;"><br>`);
+                        };
+                        reader.readAsDataURL(blob);
+                        break;
+                    }
+                }
+            });
+        }
+        
+        // 覆寫原本的連結格式化，加入 Markdown 與 Tooltip
+        window.formatMemoLinks = function(rawText) {
+            if (!rawText) return "";
+            let processed = rawText;
+            if (typeof marked !== 'undefined') {
+                try { processed = marked.parse(processed); } catch (e) {}
+            }
+            return processed.replace(/\[\[(.*?)\]\]/g, (match, ref) => {
+                const cleanRef = ref.replace(/<[^>]+>/g, ''); 
+                return `<span class="memo-link" 
+                          onclick="event.stopPropagation(); handleWikiLink('${cleanRef}')"
+                          onmousemove="showTooltip('${cleanRef}', event)"
+                          onmouseleave="document.getElementById('wikiTooltip').style.display='none'"
+                        >[[${cleanRef}]]</span>`;
+            });
+        };
+        
+        function showTooltip(text, e) {
+            const tooltip = document.getElementById('wikiTooltip');
+            const target = annotations.find(a => a.rtmId === text || a.title === text || a.code === text);
+            let content = target 
+                ? `<b>${target.rtmId} ${target.title}</b><br><span style="color:#666">${target.text.substring(0,80)}...</span>` 
+                : `<span style="color:red">無此連結: ${text}</span>`;
+                
+            tooltip.innerHTML = content;
+            tooltip.style.display = 'block';
+            
+            // 邊界檢查
+            let l = e.clientX + 15, t = e.clientY + 15;
+            if (l + 250 > window.innerWidth) l -= 260;
+            if (t + 100 > window.innerHeight) t -= 110;
+            tooltip.style.left = l + 'px'; tooltip.style.top = t + 'px';
+        }
+        
+        // --- C. 關聯圖 (Mermaid) ---
+        function openGraphModal() {
+            document.getElementById('graphModal').style.display = 'flex';
+            renderMermaid();
+        }
+        
+        function renderMermaid() {
+            const el = document.getElementById('mermaidGraph');
+            let graphDef = "graph TD;\n";
+            let hasLinks = false;
+            
+            // 建立節點與連結
+            annotations.forEach(a => {
+                // 清理 ID (Mermaid 不支援空格或特殊符號作為 ID)
+                const safeId = "N" + a.id.replace(/[^a-zA-Z0-9]/g, '');
+                const label = (a.rtmId && a.rtmId.length < 10 ? a.rtmId : a.title).replace(/["()]/g, '');
+                
+                // 掃描 memo 中的連結 [[Target]]
+                const links = [...a.memo.matchAll(/\[\[(.*?)\]\]/g)];
+                links.forEach(match => {
+                    const refText = match[1];
+                    const target = annotations.find(t => t.rtmId === refText || t.title === refText || t.code === refText);
+                    if (target) {
+                        const safeTargetId = "N" + target.id.replace(/[^a-zA-Z0-9]/g, '');
+                        graphDef += `  ${safeId}["${label}"] --> ${safeTargetId}["${target.rtmId||target.title}"];\n`;
+                        hasLinks = true;
+                    }
+                });
+            });
+        
+            if (!hasLinks) graphDef += "  Info[尚未建立任何連結];\n  Tip[請在筆記中使用 [[ID]] 建立關聯];";
+            
+            el.innerHTML = `<div class="mermaid">${graphDef}</div>`;
+            mermaid.run({ nodes: [el.querySelector('.mermaid')] });
+        }
+        
+        // --- D. 儀表板 (Chart.js) ---
+        let myCharts = {};
+        
+        function openDashboardModal() {
+            document.getElementById('dashboardModal').style.display = 'flex';
+            setTimeout(renderCharts, 200);
+        }
+        
+        function renderCharts() {
+            // 1. 準備數據
+            const pCounts = { High: 0, Medium: 0, Low: 0 };
+            const cCounts = {};
+            
+            annotations.forEach(a => {
+                pCounts[a.priority] = (pCounts[a.priority] || 0) + 1;
+                cCounts[a.code] = (cCounts[a.code] || 0) + 1;
+            });
+        
+            // 2. 繪製 Priority 圓餅圖
+            drawChart('chartPriority', 'doughnut', {
+                labels: Object.keys(pCounts),
+                datasets: [{ data: Object.values(pCounts), backgroundColor: ['#dc3545', '#ffc107', '#28a745'] }]
+            });
+        
+            // 3. 繪製 Category 長條圖
+            drawChart('chartCategory', 'bar', {
+                labels: Object.keys(cCounts),
+                datasets: [{ label: '數量', data: Object.values(cCounts), backgroundColor: '#17a2b8' }]
+            });
+        }
+        
+        function drawChart(id, type, data) {
+            if (myCharts[id]) myCharts[id].destroy(); // 銷毀舊圖表
+            const ctx = document.getElementById(id).getContext('2d');
+            myCharts[id] = new Chart(ctx, { type: type, data: data, options: { responsive: true, maintainAspectRatio: false } });
+        }
+        
+        // --- E. 批次標籤管理 ---
+        function openBatchTagModal() {
+            const sel = document.getElementById('batchOldTag');
+            sel.innerHTML = '<option value="">-- 請選擇標籤 --</option>';
+            
+            // 取得所有不重複的標籤
+            const tags = [...new Set(annotations.map(a => a.code))];
+            tags.forEach(t => sel.add(new Option(t, t)));
+            
+            document.getElementById('batchCountBadge').innerText = "影響筆數: 0";
+            document.getElementById('batchTagModal').style.display = 'flex';
+        }
+        
+        function updateBatchColorPreview() {
+            const oldTag = document.getElementById('batchOldTag').value;
+            const count = annotations.filter(a => a.code === oldTag).length;
+            document.getElementById('batchCountBadge').innerText = `影響筆數: ${count}`;
+            
+            // 嘗試抓取該標籤原本的顏色
+            const sample = annotations.find(a => a.code === oldTag);
+            if(sample) document.getElementById('batchNewColor').value = sample.color;
+        }
+        
+        function applyBatchTagUpdate() {
+            const oldTag = document.getElementById('batchOldTag').value;
+            const newName = document.getElementById('batchNewName').value.trim();
+            const newColor = document.getElementById('batchNewColor').value;
+            
+            if(!oldTag) return alert("請選擇要修改的標籤");
+            if(!confirm(`確定要修改 ${oldTag} 嗎？此操作無法復原。`)) return;
+        
+            let updatedCount = 0;
+            annotations.forEach(a => {
+                if (a.code === oldTag) {
+                    if (newName) a.code = newName;
+                    a.color = newColor;
+                    updatedCount++;
+                    
+                    // 同步更新畫面上的 Highlights 顏色
+                    const area = document.getElementById('area-' + a.id);
+                    if(area) area.style.borderColor = newColor;
+                    document.querySelectorAll('.hl-' + a.id).forEach(s => s.style.borderBottomColor = newColor);
+                }
+            });
+        
+            alert(`成功更新 ${updatedCount} 筆資料！`);
+            renderSidebar();
+            saveToLocal();
+            document.getElementById('batchTagModal').style.display = 'none';
+        }
+        </script>
 </body>
 </html>
