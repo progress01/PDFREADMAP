@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V11.5 - Final Complete)</title>
+    <title>PDF 閱讀地圖 (Ultimate V11.5 - Final Fixed)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
@@ -52,14 +56,12 @@
         /* =========================================
            2. 工具列樣式
            ========================================= */
-        /* 主工具列 (V8 復刻) */
         .toolbar { 
             background: #222; color: white; padding: 10px 20px; 
             display: flex; align-items: center; gap: 8px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 100; flex-shrink: 0; flex-wrap: wrap; 
         }
 
-        /* 進階工具列 (V10 功能 - 預設隱藏) */
         .advanced-toolbar {
             background: #333; color: white; padding: 8px 20px;
             display: none; align-items: center; gap: 15px; 
@@ -211,6 +213,38 @@
         .lightbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5000; justify-content: center; align-items: center; cursor: zoom-out; flex-direction: column; }
         .lightbox img { max-width: 90%; max-height: 85%; box-shadow: 0 0 20px rgba(255,255,255,0.2); border: 2px solid white; object-fit: contain; }
         .list-item img { cursor: zoom-in; transition: 0.2s; } .list-item img:hover { opacity: 0.8; outline: 2px solid #007bff; }
+        
+        /* Markdown & Patch Styles */
+        .memo-content blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 10px; color: #666; }
+        .memo-content pre { background: #f4f4f4; padding: 5px; border-radius: 4px; overflow-x: auto; }
+        .memo-content code { font-family: monospace; background: #eee; padding: 2px 4px; border-radius: 3px; }
+        .memo-content ul, .memo-content ol { margin: 5px 0; padding-left: 20px; }
+        .memo-content img { max-width: 100%; border: 1px solid #ccc; margin-top: 5px; }
+        
+        #wikiTooltip {
+            display: none; position: fixed; z-index: 9999; background: #fff; 
+            border: 1px solid #999; padding: 10px; border-radius: 4px; 
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.3); max-width: 300px; 
+            font-size: 0.9em; pointer-events: none;
+        }
+        
+        .patch-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 6000; justify-content: center; align-items: center;
+        }
+        .patch-card {
+            background: white; width: 80%; height: 85%; border-radius: 8px;
+            display: flex; flex-direction: column; padding: 20px; position: relative;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        .patch-close {
+            position: absolute; top: 10px; right: 15px; font-size: 1.5em; 
+            cursor: pointer; color: #666;
+        }
+        .patch-body { flex: 1; overflow-y: auto; padding: 10px; }
+        .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; height: 100%; }
+        .chart-container { flex: 1; min-width: 300px; min-height: 300px; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
+        .memo-link:hover { background-color: rgba(255, 255, 0, 0.3); text-decoration: none; }
     </style>
 </head>
 <body>
@@ -463,6 +497,61 @@
     <script id="embedded-data" type="application/json"></script>
     <div class="lightbox" id="imageLightbox" onclick="this.style.display='none'"><img id="lightboxImg" src=""><span>關閉</span></div>
 
+    <div id="wikiTooltip"></div>
+    
+    <div id="graphModal" class="patch-modal">
+        <div class="patch-card">
+            <span class="patch-close" onclick="document.getElementById('graphModal').style.display='none'">×</span>
+            <h2 style="margin-top:0;">🕸️ 知識關聯圖 (Mermaid Graph)</h2>
+            <div class="patch-body" style="background:#f9f9f9; border:1px solid #ddd; display:flex; justify-content:center; align-items:center;">
+                <div id="mermaidGraph" style="width:100%; text-align:center;"></div>
+            </div>
+            <div style="text-align:center; padding-top:10px; color:#666; font-size:0.8em;">
+                系統會自動分析筆記中的 [[ID]] 或 [[標題]] 連結並繪製成圖。
+            </div>
+        </div>
+    </div>
+    
+    <div id="dashboardModal" class="patch-modal">
+        <div class="patch-card">
+            <span class="patch-close" onclick="document.getElementById('dashboardModal').style.display='none'">×</span>
+            <h2 style="margin-top:0;">📊 數據統計儀表板</h2>
+            <div class="patch-body dashboard-grid">
+                <div class="chart-container">
+                    <h4 style="text-align:center; margin:0 0 10px 0;">優先級分佈 (Priority)</h4>
+                    <canvas id="chartPriority"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h4 style="text-align:center; margin:0 0 10px 0;">標籤類別統計 (Category)</h4>
+                    <canvas id="chartCategory"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="batchTagModal" class="patch-modal">
+        <div class="patch-card" style="width:500px; height:auto; max-height:80vh;">
+            <span class="patch-close" onclick="document.getElementById('batchTagModal').style.display='none'">×</span>
+            <h2 style="margin-top:0;">🏷️ 標籤批次管理</h2>
+            <div class="patch-body">
+                <p style="color:#666; font-size:0.9em;">將舊標籤統一修改為新名稱或新顏色。</p>
+                <label>選擇舊標籤</label>
+                <select id="batchOldTag" onchange="updateBatchColorPreview()" style="margin-bottom:10px;"></select>
+                
+                <label>新名稱 (留空則不改名)</label>
+                <input type="text" id="batchNewName" placeholder="輸入新標籤名稱..." style="margin-bottom:10px;">
+                
+                <label>新顏色</label>
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <input type="color" id="batchNewColor" style="height:38px; width:50px;">
+                    <span id="batchCountBadge" style="padding:8px; background:#eee; border-radius:4px; font-size:0.9em;">影響筆數: 0</span>
+                </div>
+                
+                <button class="primary" style="width:100%" onclick="applyBatchTagUpdate()">🚀 執行批次更新</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // =========================================
         // 1. 全域變數
@@ -532,6 +621,13 @@
 
             document.getElementById('imageUploadInput').addEventListener('change', handleImageInsert);
             makeDraggable(document.getElementById("editorCard"), document.getElementById("modalTitle"));
+            
+            // 初始化 Patch UI
+            setTimeout(() => {
+                initPatchUI();
+                enablePasteImage();
+                mermaid.initialize({ startOnLoad: false, theme: 'default' });
+            }, 1000);
         };
 
         // =========================================
@@ -800,22 +896,6 @@
             annotations.filter(a => a.page === p).forEach(ann => drawSingleHighlight(ann, div));
         }
 
-        function scrollToAnnotation(a) { 
-            const b = Math.floor((a.page - 1) / BATCH_SIZE); 
-            if (b !== currentBatchIndex) { 
-                currentBatchIndex = b; 
-                renderCurrentBatch().then(() => setTimeout(() => doScroll(a), 500)); 
-            } else doScroll(a); 
-        }
-
-        function doScroll(a) { 
-            const el = document.querySelector(`.pdf-page[data-page-number="${a.page}"]`); 
-            if (el) { 
-                el.scrollIntoView({behavior: 'smooth', block: 'center'}); 
-                if (a.type !== 'area') el.classList.add('highlight-flash'); 
-            } 
-        }
-
         // =========================================
         // 6. 側邊欄與連結
         // =========================================
@@ -871,12 +951,21 @@
             });
         }
 
-        function formatMemoLinks(html) { 
-            if (!html) return ""; 
-            return html.replace(/\[\[(.*?)\]\]/g, (match, ref) => { 
-                return `<span class="memo-link" onclick="event.stopPropagation(); handleWikiLink('${ref}')">${match}</span>`; 
-            }); 
-        }
+        window.formatMemoLinks = function(rawText) {
+            if (!rawText) return "";
+            let processed = rawText;
+            if (typeof marked !== 'undefined') {
+                try { processed = marked.parse(processed); } catch (e) {}
+            }
+            return processed.replace(/\[\[(.*?)\]\]/g, (match, ref) => {
+                const cleanRef = ref.replace(/<[^>]+>/g, ''); 
+                return `<span class="memo-link" 
+                          onclick="event.stopPropagation(); handleWikiLink('${cleanRef}')"
+                          onmousemove="showTooltip('${cleanRef}', event)"
+                          onmouseleave="document.getElementById('wikiTooltip').style.display='none'"
+                        >[[${cleanRef}]]</span>`;
+            });
+        };
         
         function handleWikiLink(ref) {
             const target = annotations.find(a => a.rtmId === ref || a.title === ref || a.code === ref);
@@ -1054,7 +1143,7 @@
         }
         
         // =========================================
-        // 8. 輔助工具函式
+        // 8. 輔助工具函式 (包含修補的回補函式)
         // =========================================
         function showLightbox(s){ document.getElementById('lightboxImg').src = s; document.getElementById('imageLightbox').style.display = 'flex'; }
         
@@ -1142,12 +1231,11 @@
             r.forEach(x => l.innerHTML += `<div class="search-item" onclick="jumpToPage(${x.p})">P.${x.p} ...${x.t}...</div>`); 
         }
 
-        // 補回遺漏的 QuickMark 功能 (Fix for Search Panel)
         function quickMark(page, text) { 
             const id = Date.now().toString(); 
             annotations.push({ 
                 id, type: 'text', page, text, 
-                title: '速標項目', rect: null, // 速標沒有座標，無法畫線
+                title: '速標項目', rect: null, 
                 code: '重點速標', color: '#dc3545', 
                 rtmId: '-', priority: 'High', status: 'New', 
                 memo: '搜尋標記', timestamp: new Date().toISOString() 
@@ -1172,148 +1260,266 @@
         function triggerImageUpload(targetId) { activeMemoId = targetId; document.getElementById('imageUploadInput').click(); }
         function insertLinkPlaceholder() { document.execCommand('insertText', false, '[[ID或關鍵字]]'); }
         function setMode(m) { editMode = m; document.getElementById('modeText').classList.toggle('active', m === 'text'); document.getElementById('modeArea').classList.toggle('active', m === 'area'); document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : 'crosshair'); }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        // =========================================
+        // 9. 補回遺失的工具函式 (修復功能)
+        // =========================================
         
-        <style>
-            /* Markdown 渲染修正 */
-            .memo-content blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 10px; color: #666; }
-            .memo-content pre { background: #f4f4f4; padding: 5px; border-radius: 4px; overflow-x: auto; }
-            .memo-content code { font-family: monospace; background: #eee; padding: 2px 4px; border-radius: 3px; }
-            .memo-content ul, .memo-content ol { margin: 5px 0; padding-left: 20px; }
-            .memo-content img { max-width: 100%; border: 1px solid #ccc; margin-top: 5px; }
-            
-            /* 懸浮預覽視窗 */
-            #wikiTooltip {
-                display: none; position: fixed; z-index: 9999; background: #fff; 
-                border: 1px solid #999; padding: 10px; border-radius: 4px; 
-                box-shadow: 4px 4px 12px rgba(0,0,0,0.3); max-width: 300px; 
-                font-size: 0.9em; pointer-events: none;
+        function showLoader(text) {
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('loaderText').innerText = text || '處理中...';
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        function updateNav() {
+            document.getElementById('btnPrev').disabled = currentBatchIndex === 0;
+            document.getElementById('btnNext').disabled = currentBatchIndex >= totalBatches - 1;
+            const start = currentBatchIndex * BATCH_SIZE + 1;
+            const end = Math.min((currentBatchIndex + 1) * BATCH_SIZE, pdfDoc ? pdfDoc.numPages : 0);
+            document.getElementById('readerFileName').innerText = pdfDoc ? `顯示頁面: ${start} - ${end} / 共 ${pdfDoc.numPages} 頁` : '尚未載入';
+        }
+
+        function changeScale(delta) {
+            currentScale = Math.max(0.5, currentScale + delta);
+            document.getElementById('zoomLevel').innerText = Math.round(currentScale * 100) + '%';
+            renderCurrentBatch();
+        }
+
+        function prevBatch() {
+            if (currentBatchIndex > 0) {
+                currentBatchIndex--;
+                renderCurrentBatch();
             }
-            
-            /* 擴充視窗共用樣式 */
-            .patch-modal {
-                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.85); z-index: 6000; justify-content: center; align-items: center;
+        }
+
+        function nextBatch() {
+            if (currentBatchIndex < totalBatches - 1) {
+                currentBatchIndex++;
+                renderCurrentBatch();
             }
-            .patch-card {
-                background: white; width: 80%; height: 85%; border-radius: 8px;
-                display: flex; flex-direction: column; padding: 20px; position: relative;
-                box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        function jumpToBatch(val) {
+            currentBatchIndex = parseInt(val);
+            renderCurrentBatch();
+        }
+
+        function changeBatchSize() {
+            BATCH_SIZE = parseInt(document.getElementById('batchSizeSelect').value);
+            calculateBatches();
+            renderCurrentBatch();
+        }
+
+        function loadFromTemplate(init = false) {
+            const saved = localStorage.getItem(TEMPLATE_KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    tagPresets = data.presets || tagPresets;
+                    customFields = data.customFields || [];
+                } catch (e) { console.error("Template load error", e); }
             }
-            .patch-close {
-                position: absolute; top: 10px; right: 15px; font-size: 1.5em; 
-                cursor: pointer; color: #666;
+            if (!init) alert("已載入設定樣板");
+        }
+
+        function checkEmbeddedData() {
+            const script = document.getElementById('embedded-data');
+            if (script && script.textContent.trim()) {
+                try {
+                    const data = JSON.parse(script.textContent);
+                    annotations = data.annotations || [];
+                    bookmarks = data.bookmarks || [];
+                    tagPresets = data.presets || tagPresets;
+                    customFields = data.customFields || [];
+                    globalMemo = data.globalMemo || "";
+                    renderSidebar();
+                    renderBookmarks();
+                    alert("已載入內嵌專案數據");
+                } catch (e) { console.error("Embedded data error", e); }
             }
-            .patch-body { flex: 1; overflow-y: auto; padding: 10px; }
-            
-            /* 儀表板佈局 */
-            .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; height: 100%; }
-            .chart-container { flex: 1; min-width: 300px; min-height: 300px; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
+        }
+
+        function saveAsTemplate() {
+            localStorage.setItem(TEMPLATE_KEY, JSON.stringify({ presets: tagPresets, customFields: customFields }));
+            alert("目前設定已存為預設樣板");
+        }
         
-            /* 連結特效 */
-            .memo-link:hover { background-color: rgba(255, 255, 0, 0.3); text-decoration: none; }
-        </style>
+        function resetAllData() {
+            if(!confirm("確定重置所有資料？此操作無法復原。")) return;
+            localStorage.removeItem(AUTOSAVE_KEY);
+            location.reload();
+        }
+
+        function download(content, fileName, contentType) {
+            const a = document.createElement("a");
+            const file = new Blob([content], { type: contentType });
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+        }
+
+        function renderQuickTags() {
+            const container = document.getElementById('quickTagArea');
+            container.innerHTML = '';
+            tagPresets.forEach(tag => {
+                const btn = document.createElement('button');
+                btn.innerText = tag.name;
+                btn.style.backgroundColor = tag.color;
+                btn.style.border = 'none';
+                btn.style.padding = '2px 8px';
+                btn.style.borderRadius = '10px';
+                btn.style.fontSize = '0.8em';
+                btn.style.cursor = 'pointer';
+                btn.style.color = '#fff';
+                btn.onclick = () => {
+                    document.getElementById('codeName').value = tag.name;
+                    document.getElementById('codeColor').value = tag.color;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderCustomFieldsInModal(currentData = {}) {
+            const container = document.getElementById('customFieldsContainer');
+            if (customFields.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'block';
+            container.innerHTML = '';
+            customFields.forEach(f => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '5px';
+                div.innerHTML = `<label style="font-size:0.9em; color:#666;">${f.label}</label>
+                                 <input type="text" data-key="${f.key}" value="${currentData[f.key] || ''}" placeholder="${f.label}...">`;
+                container.appendChild(div);
+            });
+        }
         
-        <div id="wikiTooltip"></div>
+        function openGlobalMemo() {
+            document.getElementById('globalMemoEditor').innerHTML = globalMemo;
+            document.getElementById('globalMemoModal').style.display = 'flex';
+        }
         
-        <div id="graphModal" class="patch-modal">
-            <div class="patch-card">
-                <span class="patch-close" onclick="document.getElementById('graphModal').style.display='none'">×</span>
-                <h2 style="margin-top:0;">🕸️ 知識關聯圖 (Mermaid Graph)</h2>
-                <div class="patch-body" style="background:#f9f9f9; border:1px solid #ddd; display:flex; justify-content:center; align-items:center;">
-                    <div id="mermaidGraph" style="width:100%; text-align:center;"></div>
-                </div>
-                <div style="text-align:center; padding-top:10px; color:#666; font-size:0.8em;">
-                    系統會自動分析筆記中的 [[ID]] 或 [[標題]] 連結並繪製成圖。
-                </div>
-            </div>
-        </div>
+        function saveGlobalMemo() {
+            globalMemo = document.getElementById('globalMemoEditor').innerHTML;
+            saveToLocal();
+            document.getElementById('globalMemoModal').style.display = 'none';
+        }
         
-        <div id="dashboardModal" class="patch-modal">
-            <div class="patch-card">
-                <span class="patch-close" onclick="document.getElementById('dashboardModal').style.display='none'">×</span>
-                <h2 style="margin-top:0;">📊 數據統計儀表板</h2>
-                <div class="patch-body dashboard-grid">
-                    <div class="chart-container">
-                        <h4 style="text-align:center; margin:0 0 10px 0;">優先級分佈 (Priority)</h4>
-                        <canvas id="chartPriority"></canvas>
-                    </div>
-                    <div class="chart-container">
-                        <h4 style="text-align:center; margin:0 0 10px 0;">標籤類別統計 (Category)</h4>
-                        <canvas id="chartCategory"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
+        function globalMemoExec(cmd) {
+            if(cmd === 'hilite') document.execCommand('backColor', false, 'yellow');
+            if(cmd === 'checkbox') document.execCommand('insertHTML', false, '&#9744; ');
+        }
         
-        <div id="batchTagModal" class="patch-modal">
-            <div class="patch-card" style="width:500px; height:auto; max-height:80vh;">
-                <span class="patch-close" onclick="document.getElementById('batchTagModal').style.display='none'">×</span>
-                <h2 style="margin-top:0;">🏷️ 標籤批次管理</h2>
-                <div class="patch-body">
-                    <p style="color:#666; font-size:0.9em;">將舊標籤統一修改為新名稱或新顏色。</p>
-                    <label>選擇舊標籤</label>
-                    <select id="batchOldTag" onchange="updateBatchColorPreview()" style="margin-bottom:10px;"></select>
-                    
-                    <label>新名稱 (留空則不改名)</label>
-                    <input type="text" id="batchNewName" placeholder="輸入新標籤名稱..." style="margin-bottom:10px;">
-                    
-                    <label>新顏色</label>
-                    <div style="display:flex; gap:10px; margin-bottom:20px;">
-                        <input type="color" id="batchNewColor" style="height:38px; width:50px;">
-                        <span id="batchCountBadge" style="padding:8px; background:#eee; border-radius:4px; font-size:0.9em;">影響筆數: 0</span>
-                    </div>
-                    
-                    <button class="primary" style="width:100%" onclick="applyBatchTagUpdate()">🚀 執行批次更新</button>
-                </div>
-            </div>
-        </div>
+        function memoExec(cmd) {
+            document.getElementById('codeMemo').focus();
+            if(cmd === 'hilite') document.execCommand('backColor', false, 'yellow');
+            if(cmd === 'checkbox') document.execCommand('insertHTML', false, '&#9744; ');
+            if(cmd === 'clear') document.execCommand('removeFormat');
+        }
+
+        function jumpAndEdit(id) {
+            const ann = annotations.find(a => a.id === id);
+            if (ann) {
+                scrollToAnnotation(ann);
+                setTimeout(() => openModal(ann), 300);
+            }
+        }
         
-        <script>
-        /**
-         * Patch Initialization
-         */
-        setTimeout(() => {
-            initPatchUI();
-            enablePasteImage();
-            mermaid.initialize({ startOnLoad: false, theme: 'default' });
-        }, 1500); // 延遲執行確保主程式已載入
+        function openSettings() {
+             const list = document.getElementById('presetList');
+             list.innerHTML = '';
+             tagPresets.forEach((t, idx) => {
+                 const span = document.createElement('span');
+                 span.innerHTML = `<span style="background:${t.color}; color:white; padding:2px 6px; border-radius:4px;">${t.name}</span> <span style="cursor:pointer; color:red;" onclick="removePreset(${idx})">×</span>`;
+                 list.appendChild(span);
+             });
+             document.getElementById('settingsModal').style.display = 'flex';
+        }
         
-        // --- A. UI 整合 (將按鈕插入原本的工具列) ---
+        function addPreset() {
+            const name = document.getElementById('newTagName').value;
+            const color = document.getElementById('newTagColor').value;
+            if(name) {
+                tagPresets.push({name, color});
+                openSettings();
+            }
+        }
+        
+        function removePreset(idx) {
+            tagPresets.splice(idx, 1);
+            openSettings();
+        }
+        
+        function addBookmark() {
+            if(!pdfDoc) return;
+            const page = Math.floor(currentBatchIndex * BATCH_SIZE) + 1;
+            const title = prompt("輸入書籤名稱:", `Page ${page}`);
+            if(title) {
+                bookmarks.push({ title, page, id: Date.now() });
+                renderBookmarks();
+                saveToLocal();
+            }
+        }
+        
+        function renderBookmarks() {
+            const list = document.getElementById('bookmarkList');
+            list.innerHTML = '';
+            bookmarks.forEach(b => {
+                const div = document.createElement('div');
+                div.className = 'bookmark-item';
+                div.innerHTML = `<span onclick="jumpToPage(${b.page})">📑 ${b.title} (P.${b.page})</span>
+                                 <button class="icon-btn" onclick="deleteBookmark(${b.id})">×</button>`;
+                list.appendChild(div);
+            });
+        }
+        
+        function deleteBookmark(id) {
+            bookmarks = bookmarks.filter(b => b.id !== id);
+            renderBookmarks();
+            saveToLocal();
+        }
+        
+        function closeModal() {
+            document.getElementById('editorModal').style.display = 'none';
+        }
+
+        // =========================================
+        // 10. Patch Features (Mermaid & Charts)
+        // =========================================
         function initPatchUI() {
             const bar = document.getElementById('advancedToolbar');
             if(!bar) return;
             
-            // 建立分隔線
+            // 避免重複加入
+            if(document.getElementById('btnGraph')) return;
+
             const sep = document.createElement('span'); 
             sep.innerHTML = '|'; sep.style.color = '#555';
             bar.appendChild(sep);
         
-            // 建立按鈕
-            const btnGraph = createPatchBtn('🕸️ 關聯圖', openGraphModal);
-            const btnDash = createPatchBtn('📊 統計', openDashboardModal);
-            const btnBatch = createPatchBtn('🏷️ 管理標籤', openBatchTagModal);
+            const btnGraph = createPatchBtn('🕸️ 關聯圖', openGraphModal, 'btnGraph');
+            const btnDash = createPatchBtn('📊 統計', openDashboardModal, 'btnDash');
+            const btnBatch = createPatchBtn('🏷️ 管理標籤', openBatchTagModal, 'btnBatch');
             
             bar.appendChild(btnGraph);
             bar.appendChild(btnDash);
             bar.appendChild(btnBatch);
-            
-            console.log("✅ V11.5 Patch UI 載入完成");
         }
         
-        function createPatchBtn(text, func) {
+        function createPatchBtn(text, func, id) {
             const btn = document.createElement('button');
             btn.innerText = text;
             btn.onclick = func;
+            if(id) btn.id = id;
             btn.style.marginLeft = "10px";
-            btn.className = "info"; // 使用既有的藍色樣式
+            btn.className = "info";
             return btn;
         }
-        
-        // --- B. Markdown & Tooltip & Image Paste ---
         
         function enablePasteImage() {
             const memoBox = document.getElementById('codeMemo');
@@ -1334,24 +1540,7 @@
                 }
             });
         }
-        
-        // 覆寫原本的連結格式化，加入 Markdown 與 Tooltip
-        window.formatMemoLinks = function(rawText) {
-            if (!rawText) return "";
-            let processed = rawText;
-            if (typeof marked !== 'undefined') {
-                try { processed = marked.parse(processed); } catch (e) {}
-            }
-            return processed.replace(/\[\[(.*?)\]\]/g, (match, ref) => {
-                const cleanRef = ref.replace(/<[^>]+>/g, ''); 
-                return `<span class="memo-link" 
-                          onclick="event.stopPropagation(); handleWikiLink('${cleanRef}')"
-                          onmousemove="showTooltip('${cleanRef}', event)"
-                          onmouseleave="document.getElementById('wikiTooltip').style.display='none'"
-                        >[[${cleanRef}]]</span>`;
-            });
-        };
-        
+
         function showTooltip(text, e) {
             const tooltip = document.getElementById('wikiTooltip');
             const target = annotations.find(a => a.rtmId === text || a.title === text || a.code === text);
@@ -1362,14 +1551,12 @@
             tooltip.innerHTML = content;
             tooltip.style.display = 'block';
             
-            // 邊界檢查
             let l = e.clientX + 15, t = e.clientY + 15;
             if (l + 250 > window.innerWidth) l -= 260;
             if (t + 100 > window.innerHeight) t -= 110;
             tooltip.style.left = l + 'px'; tooltip.style.top = t + 'px';
         }
         
-        // --- C. 關聯圖 (Mermaid) ---
         function openGraphModal() {
             document.getElementById('graphModal').style.display = 'flex';
             renderMermaid();
@@ -1380,13 +1567,10 @@
             let graphDef = "graph TD;\n";
             let hasLinks = false;
             
-            // 建立節點與連結
             annotations.forEach(a => {
-                // 清理 ID (Mermaid 不支援空格或特殊符號作為 ID)
                 const safeId = "N" + a.id.replace(/[^a-zA-Z0-9]/g, '');
                 const label = (a.rtmId && a.rtmId.length < 10 ? a.rtmId : a.title).replace(/["()]/g, '');
                 
-                // 掃描 memo 中的連結 [[Target]]
                 const links = [...a.memo.matchAll(/\[\[(.*?)\]\]/g)];
                 links.forEach(match => {
                     const refText = match[1];
@@ -1400,12 +1584,10 @@
             });
         
             if (!hasLinks) graphDef += "  Info[尚未建立任何連結];\n  Tip[請在筆記中使用 [[ID]] 建立關聯];";
-            
             el.innerHTML = `<div class="mermaid">${graphDef}</div>`;
             mermaid.run({ nodes: [el.querySelector('.mermaid')] });
         }
         
-        // --- D. 儀表板 (Chart.js) ---
         let myCharts = {};
         
         function openDashboardModal() {
@@ -1414,7 +1596,6 @@
         }
         
         function renderCharts() {
-            // 1. 準備數據
             const pCounts = { High: 0, Medium: 0, Low: 0 };
             const cCounts = {};
             
@@ -1423,13 +1604,11 @@
                 cCounts[a.code] = (cCounts[a.code] || 0) + 1;
             });
         
-            // 2. 繪製 Priority 圓餅圖
             drawChart('chartPriority', 'doughnut', {
                 labels: Object.keys(pCounts),
                 datasets: [{ data: Object.values(pCounts), backgroundColor: ['#dc3545', '#ffc107', '#28a745'] }]
             });
         
-            // 3. 繪製 Category 長條圖
             drawChart('chartCategory', 'bar', {
                 labels: Object.keys(cCounts),
                 datasets: [{ label: '數量', data: Object.values(cCounts), backgroundColor: '#17a2b8' }]
@@ -1437,20 +1616,16 @@
         }
         
         function drawChart(id, type, data) {
-            if (myCharts[id]) myCharts[id].destroy(); // 銷毀舊圖表
+            if (myCharts[id]) myCharts[id].destroy(); 
             const ctx = document.getElementById(id).getContext('2d');
             myCharts[id] = new Chart(ctx, { type: type, data: data, options: { responsive: true, maintainAspectRatio: false } });
         }
         
-        // --- E. 批次標籤管理 ---
         function openBatchTagModal() {
             const sel = document.getElementById('batchOldTag');
             sel.innerHTML = '<option value="">-- 請選擇標籤 --</option>';
-            
-            // 取得所有不重複的標籤
             const tags = [...new Set(annotations.map(a => a.code))];
             tags.forEach(t => sel.add(new Option(t, t)));
-            
             document.getElementById('batchCountBadge').innerText = "影響筆數: 0";
             document.getElementById('batchTagModal').style.display = 'flex';
         }
@@ -1459,8 +1634,6 @@
             const oldTag = document.getElementById('batchOldTag').value;
             const count = annotations.filter(a => a.code === oldTag).length;
             document.getElementById('batchCountBadge').innerText = `影響筆數: ${count}`;
-            
-            // 嘗試抓取該標籤原本的顏色
             const sample = annotations.find(a => a.code === oldTag);
             if(sample) document.getElementById('batchNewColor').value = sample.color;
         }
@@ -1479,8 +1652,6 @@
                     if (newName) a.code = newName;
                     a.color = newColor;
                     updatedCount++;
-                    
-                    // 同步更新畫面上的 Highlights 顏色
                     const area = document.getElementById('area-' + a.id);
                     if(area) area.style.borderColor = newColor;
                     document.querySelectorAll('.hl-' + a.id).forEach(s => s.style.borderBottomColor = newColor);
@@ -1492,6 +1663,6 @@
             saveToLocal();
             document.getElementById('batchTagModal').style.display = 'none';
         }
-        </script>
+    </script>
 </body>
 </html>
