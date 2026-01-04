@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V13.1 - Fix Deletion Bug)</title>
+    <title>PDF 閱讀地圖 (Ultimate V13.2 - ID Collision Fix)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -264,7 +264,7 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V13.1</h1>
+        <h1>🛠️ V13.2</h1>
         
         <div class="mode-switch">
             <div class="mode-btn" id="modeText" onclick="setMode('text')">📝 抓文字</div>
@@ -321,8 +321,8 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V13.1 (Fix Deletion)</p>
-                <p style="font-size:0.8em; color:#666;">修復刪除 Bug 與資料類型錯誤</p>
+                <p>V13.2 (ID Collision Fixed)</p>
+                <p style="font-size:0.8em; color:#666;">修復 ID 重複導致刪除異常問題</p>
             </div>
             
             <div id="searchPanel">
@@ -595,7 +595,7 @@
         let activePageDiv = null;
         let activePageNum = 0;
 
-        const AUTOSAVE_KEY = 'pdf_ult_v13';
+        const AUTOSAVE_KEY = 'pdf_ult_v13_2'; // 新 key 避免舊資料汙染
         const TEMPLATE_KEY = 'pdf_ult_v13_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
@@ -750,6 +750,7 @@
                 currentMarquee.remove();
                 currentMarquee = null;
                 
+                // [修正] 增加最小拖曳距離判斷 (5px)，避免誤觸產生極小框框
                 if (w > 5 && h > 5 && activePageDiv) {
                     processSelection(activePageNum, {left:l, top:t, width:w, height:h}, activePageDiv);
                 }
@@ -802,8 +803,13 @@
             return `REQ-${String(m + 1).padStart(4, '0')}`; 
         }
         
+        // [修正] ID 生成使用 Random 避免衝突
+        function generateUniqueId() {
+            return Date.now().toString() + '-' + Math.random().toString(36).substr(2, 5);
+        }
+
         function quickSave() { 
-            const newId = Date.now().toString();
+            const newId = generateUniqueId();
             const newAnn = {
                 id: newId, ...currentSelection, rtmId: genId(), 
                 title: currentSelection.text.substring(0, 10), 
@@ -860,7 +866,8 @@
                 annotations[i] = { ...annotations[i], ...nd }; 
                 renderCurrentBatch(); 
             } else {
-                const newId = Date.now().toString();
+                // [修正] 確保新增時 ID 唯一
+                const newId = generateUniqueId();
                 const finalData = { id: newId, ...nd };
                 annotations.push(finalData);
                 const div = document.querySelector(`.pdf-page[data-page-number="${finalData.page}"]`);
@@ -898,14 +905,16 @@
         function deleteItem(id) {
             if (!confirm('確定刪除此標註？')) return;
             
-            // [修正] 強制轉型為 String 進行比較，避免 123 !== "123" 的問題
+            // [修正] 強制字串比對，並確保過濾正確
+            const originalLength = annotations.length;
             annotations = annotations.filter(a => String(a.id) !== String(id));
             
             renderSidebar();
             saveToLocal();
 
-            const areaEl = document.getElementById('area-' + id);
-            if (areaEl) areaEl.remove();
+            // [修正] 使用 querySelectorAll 移除所有可能重複 ID 的 DOM 元素 (強力清除)
+            const areaEls = document.querySelectorAll(`[id='area-${id}']`);
+            areaEls.forEach(el => el.remove());
 
             const textSpans = document.querySelectorAll('.hl-' + id);
             textSpans.forEach(span => {
