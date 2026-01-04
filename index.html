@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V11.5 - Final Fixed)</title>
+    <title>PDF 閱讀地圖 (Ultimate V13.0 - Stable Release)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -126,8 +126,22 @@
         .textLayer span { color: transparent; position: absolute; white-space: pre; cursor: crosshair; }
         
         .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
-        .highlight-area { position: absolute; border: 3px solid #dc3545; background-color: rgba(220, 53, 69, 0.1); cursor: pointer; z-index: 50; transition: 0.2s; }
-        .highlight-area:hover { background-color: rgba(220, 53, 69, 0.3); }
+        
+        /* [修正] 螢光筆區域樣式強化：高層級 + 可點擊 */
+        .highlight-area { 
+            position: absolute; 
+            border: 2px solid; 
+            background-color: rgba(255, 235, 59, 0.3); /* 半透明 */
+            cursor: pointer; 
+            z-index: 60; /* 比一般文字層高 */
+            transition: 0.2s; 
+            pointer-events: auto; /* 確保能接收點擊 */
+        }
+        .highlight-area:hover { 
+            background-color: rgba(255, 235, 59, 0.5); 
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
+        }
+        
         .highlight-flash { animation: flash 1s ease-in-out; }
         @keyframes flash { 0%, 100% { opacity: 1; border-color: red; box-shadow: 0 0 15px red; } 50% { opacity: 0.2; } }
 
@@ -184,7 +198,6 @@
             border-radius: 12px; display: flex; flex-direction: column; gap: 12px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; 
             pointer-events: auto; border: 1px solid #999;
-            /* 關鍵：編輯視窗固定右側 */
             top: 50px; right: 20px; left: auto;
         }
         .modal-drag-handle { cursor: move; user-select: none; }
@@ -252,11 +265,11 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V11.5</h1>
+        <h1>🛠️ V13.0</h1>
         
         <div class="mode-switch">
-            <div class="mode-btn active" id="modeText" onclick="setMode('text')">📝 抓文字</div>
-            <div class="mode-btn" id="modeArea" onclick="setMode('area')">🖼️ 框圖表</div>
+            <div class="mode-btn" id="modeText" onclick="setMode('text')">📝 抓文字</div>
+            <div class="mode-btn active" id="modeArea" onclick="setMode('area')">🖍️ 螢光筆</div>
         </div>
 
         <button onclick="openSettings()">⚙️ 設定</button>
@@ -309,8 +322,8 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V11.5 (Final Complete)</p>
-                <p style="font-size:0.8em; color:#666;">(點擊上方「🔨 工具箱」可開啟 AI、目錄與進階功能)</p>
+                <p>V13.0 (Stable Release)</p>
+                <p style="font-size:0.8em; color:#666;">螢光筆模式 + 完整邏輯修復</p>
             </div>
             
             <div id="searchPanel">
@@ -563,7 +576,8 @@
         let currentBatchIndex = 0;
         let totalBatches = 0;
         let currentSelection = null;
-        let editMode = 'text';
+        // [修正] 預設模式 'area' (螢光筆)
+        let editMode = 'area';
         let isReaderMode = false;
         let globalMemo = "";
         let lastUsedSettings = { code: '重點', color: '#ffeb3b', priority: 'Medium', status: 'New' };
@@ -580,8 +594,8 @@
         let activePageDiv = null;
         let activePageNum = 0;
 
-        const AUTOSAVE_KEY = 'pdf_ult_v11';
-        const TEMPLATE_KEY = 'pdf_ult_v11_tpl';
+        const AUTOSAVE_KEY = 'pdf_ult_v13';
+        const TEMPLATE_KEY = 'pdf_ult_v13_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
         // =========================================
@@ -750,7 +764,6 @@
                 height: r.height / currentScale
             };
             
-            // 清除選取範圍 (手感優化)
             window.getSelection().removeAllRanges();
 
             if (editMode === 'text') {
@@ -771,10 +784,8 @@
                     if (isDirectMode) quickSave(); else openModal(); 
                 }
             } else {
-                const c = document.createElement('canvas'); 
-                c.width = r.width; c.height = r.height; 
-                c.getContext('2d').drawImage(div.querySelector('canvas'), r.left, r.top, r.width, r.height, 0, 0, r.width, r.height);
-                currentSelection = { id: null, type: 'area', page: p, text: '[圖片]', rect: nr, imageData: c.toDataURL() }; 
+                // [修正] Area Mode 用於螢光筆
+                currentSelection = { id: null, type: 'area', page: p, text: '[螢光筆標記]', rect: nr, imageData: null }; 
                 if (isDirectMode) quickSave(); else openModal();
             }
         }
@@ -802,7 +813,6 @@
             annotations.push(newAnn);
             
             renderSidebar(); saveToLocal();
-            // 不重繪，直接補畫 (手感優化)
             const div = document.querySelector(`.pdf-page[data-page-number="${newAnn.page}"]`);
             if(div) drawSingleHighlight(newAnn, div);
         }
@@ -818,7 +828,7 @@
             document.getElementById('codeColor').value = ex ? ex.color : lastUsedSettings.color;
             document.getElementById('codeMemo').innerHTML = ex ? ex.memo : ''; 
             currentSelection.id = ex ? ex.id : null;
-            document.getElementById('quotePreview').innerHTML = currentSelection.type === 'area' ? `<img src="${currentSelection.imageData}">` : currentSelection.text;
+            document.getElementById('quotePreview').innerHTML = currentSelection.type === 'area' ? '(螢光筆區域)' : currentSelection.text;
             m.style.display = 'flex'; 
         }
 
@@ -867,7 +877,11 @@
                 area.style.top = (ann.rect.top * currentScale) + 'px'; 
                 area.style.width = (ann.rect.width * currentScale) + 'px'; 
                 area.style.height = (ann.rect.height * currentScale) + 'px'; 
-                area.style.borderColor = ann.color; 
+                
+                // [修正] 半透明 & 樣式
+                area.style.backgroundColor = ann.color + '4D'; 
+                area.style.borderColor = ann.color;
+                
                 area.onclick = (e) => { e.stopPropagation(); jumpAndEdit(ann.id); }; 
                 div.appendChild(area); 
             }
@@ -1143,7 +1157,7 @@
         }
         
         // =========================================
-        // 8. 輔助工具函式 (包含修補的回補函式)
+        // 8. 輔助工具函式
         // =========================================
         function showLightbox(s){ document.getElementById('lightboxImg').src = s; document.getElementById('imageLightbox').style.display = 'flex'; }
         
@@ -1171,6 +1185,17 @@
                         renderSidebar(); renderBookmarks(); 
                     }
                 } catch(e){}
+            }
+        }
+        
+        // [修正] 補上 clearAutoSave 函式，避免報錯
+        function clearAutoSave() {
+            if(confirm("確定清空所有索引列表？")) {
+                annotations = [];
+                renderSidebar();
+                saveToLocal();
+                // 移除畫面上的 highlight
+                document.querySelectorAll('.highlight-text, .highlight-area').forEach(el => el.remove());
             }
         }
 
@@ -1202,7 +1227,9 @@
             annotations.forEach(a => { 
                 html += '<tr>'; 
                 html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`; 
-                html += `<td>${a.type==='area' ? '[圖片]' : a.text}</td>`; 
+                // [修正] 匯出預覽防呆
+                const txtContent = a.type === 'area' ? (a.imageData ? '[圖片]' : '[螢光筆標記]') : a.text;
+                html += `<td>${txtContent}</td>`; 
                 customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; }); 
                 html += `<td>${a.memo}</td></tr>`; 
             }); 
@@ -1215,7 +1242,11 @@
             if(!annotations.length) return alert("無資料"); 
             const w = new ExcelJS.Workbook(), s = w.addWorksheet('RTM'); 
             s.columns = [{header: 'ID', key: 'id'}, {header: 'Title', key: 't'}, {header: 'Text', key: 'txt'}, {header: 'Memo', key: 'm'}]; 
-            annotations.forEach(a => s.addRow({id: a.rtmId, t: a.title, txt: a.text, m: a.memo.replace(/<[^>]+>/g, '')})); 
+            // [修正] Excel 匯出防呆
+            annotations.forEach(a => {
+                 const txt = a.type === 'area' ? (a.imageData ? '[圖片]' : '[螢光筆標記]') : a.text;
+                 s.addRow({id: a.rtmId, t: a.title, txt: txt, m: a.memo.replace(/<[^>]+>/g, '')});
+            }); 
             download(await w.xlsx.writeBuffer(), 'RTM.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); 
         }
 
@@ -1259,7 +1290,13 @@
         }
         function triggerImageUpload(targetId) { activeMemoId = targetId; document.getElementById('imageUploadInput').click(); }
         function insertLinkPlaceholder() { document.execCommand('insertText', false, '[[ID或關鍵字]]'); }
-        function setMode(m) { editMode = m; document.getElementById('modeText').classList.toggle('active', m === 'text'); document.getElementById('modeArea').classList.toggle('active', m === 'area'); document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : 'crosshair'); }
+        
+        function setMode(m) { 
+            editMode = m; 
+            document.getElementById('modeText').classList.toggle('active', m === 'text'); 
+            document.getElementById('modeArea').classList.toggle('active', m === 'area'); 
+            document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : 'crosshair'); 
+        }
 
         // =========================================
         // 9. 補回遺失的工具函式 (修復功能)
@@ -1653,7 +1690,10 @@
                     a.color = newColor;
                     updatedCount++;
                     const area = document.getElementById('area-' + a.id);
-                    if(area) area.style.borderColor = newColor;
+                    if(area) {
+                        area.style.borderColor = newColor;
+                        area.style.backgroundColor = newColor + '4D';
+                    }
                     document.querySelectorAll('.hl-' + a.id).forEach(s => s.style.borderBottomColor = newColor);
                 }
             });
