@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V13.0 - Stable Release)</title>
+    <title>PDF 閱讀地圖 (Ultimate V13.1 - Fix Deletion Bug)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -127,15 +127,14 @@
         
         .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
         
-        /* [修正] 螢光筆區域樣式強化：高層級 + 可點擊 */
         .highlight-area { 
             position: absolute; 
             border: 2px solid; 
-            background-color: rgba(255, 235, 59, 0.3); /* 半透明 */
+            background-color: rgba(255, 235, 59, 0.3); 
             cursor: pointer; 
-            z-index: 60; /* 比一般文字層高 */
+            z-index: 60; 
             transition: 0.2s; 
-            pointer-events: auto; /* 確保能接收點擊 */
+            pointer-events: auto; 
         }
         .highlight-area:hover { 
             background-color: rgba(255, 235, 59, 0.5); 
@@ -265,7 +264,7 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V13.0</h1>
+        <h1>🛠️ V13.1</h1>
         
         <div class="mode-switch">
             <div class="mode-btn" id="modeText" onclick="setMode('text')">📝 抓文字</div>
@@ -322,8 +321,8 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V13.0 (Stable Release)</p>
-                <p style="font-size:0.8em; color:#666;">螢光筆模式 + 完整邏輯修復</p>
+                <p>V13.1 (Fix Deletion)</p>
+                <p style="font-size:0.8em; color:#666;">修復刪除 Bug 與資料類型錯誤</p>
             </div>
             
             <div id="searchPanel">
@@ -435,9 +434,12 @@
                 </div>
                 <div id="codeMemo" class="rich-memo" contenteditable="true" placeholder="可直接貼上截圖..."></div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
-                <button onclick="closeModal()">取消 (Esc)</button>
-                <button class="primary btn-save" onclick="confirmAnnotation()">確定 (Enter)</button>
+            <div style="display:flex; justify-content:space-between; gap:10px; margin-top:15px;">
+                <button class="danger" id="btnModalDelete" onclick="">🗑️ 刪除</button>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="closeModal()">取消 (Esc)</button>
+                    <button class="primary btn-save" onclick="confirmAnnotation()">確定 (Enter)</button>
+                </div>
             </div>
         </div>
     </div>
@@ -576,7 +578,6 @@
         let currentBatchIndex = 0;
         let totalBatches = 0;
         let currentSelection = null;
-        // [修正] 預設模式 'area' (螢光筆)
         let editMode = 'area';
         let isReaderMode = false;
         let globalMemo = "";
@@ -784,7 +785,6 @@
                     if (isDirectMode) quickSave(); else openModal(); 
                 }
             } else {
-                // [修正] Area Mode 用於螢光筆
                 currentSelection = { id: null, type: 'area', page: p, text: '[螢光筆標記]', rect: nr, imageData: null }; 
                 if (isDirectMode) quickSave(); else openModal();
             }
@@ -829,6 +829,15 @@
             document.getElementById('codeMemo').innerHTML = ex ? ex.memo : ''; 
             currentSelection.id = ex ? ex.id : null;
             document.getElementById('quotePreview').innerHTML = currentSelection.type === 'area' ? '(螢光筆區域)' : currentSelection.text;
+            
+            // [新增] 綁定刪除按鈕
+            if (ex && ex.id) {
+                document.getElementById('btnModalDelete').style.display = 'block';
+                document.getElementById('btnModalDelete').onclick = () => { deleteItem(ex.id); closeModal(); };
+            } else {
+                document.getElementById('btnModalDelete').style.display = 'none';
+            }
+            
             m.style.display = 'flex'; 
         }
 
@@ -878,7 +887,6 @@
                 area.style.width = (ann.rect.width * currentScale) + 'px'; 
                 area.style.height = (ann.rect.height * currentScale) + 'px'; 
                 
-                // [修正] 半透明 & 樣式
                 area.style.backgroundColor = ann.color + '4D'; 
                 area.style.borderColor = ann.color;
                 
@@ -890,7 +898,9 @@
         function deleteItem(id) {
             if (!confirm('確定刪除此標註？')) return;
             
-            annotations = annotations.filter(a => a.id !== id);
+            // [修正] 強制轉型為 String 進行比較，避免 123 !== "123" 的問題
+            annotations = annotations.filter(a => String(a.id) !== String(id));
+            
             renderSidebar();
             saveToLocal();
 
@@ -1188,13 +1198,11 @@
             }
         }
         
-        // [修正] 補上 clearAutoSave 函式，避免報錯
         function clearAutoSave() {
             if(confirm("確定清空所有索引列表？")) {
                 annotations = [];
                 renderSidebar();
                 saveToLocal();
-                // 移除畫面上的 highlight
                 document.querySelectorAll('.highlight-text, .highlight-area').forEach(el => el.remove());
             }
         }
@@ -1227,7 +1235,6 @@
             annotations.forEach(a => { 
                 html += '<tr>'; 
                 html += `<td>${a.rtmId || ''}</td><td>${a.page}</td><td>${a.title||a.code}</td><td>${a.code}</td><td>${a.priority}</td><td>${a.status}</td>`; 
-                // [修正] 匯出預覽防呆
                 const txtContent = a.type === 'area' ? (a.imageData ? '[圖片]' : '[螢光筆標記]') : a.text;
                 html += `<td>${txtContent}</td>`; 
                 customFields.forEach(f => { html += `<td>${(a.customData && a.customData[f.key]) ? a.customData[f.key] : ''}</td>`; }); 
@@ -1242,7 +1249,6 @@
             if(!annotations.length) return alert("無資料"); 
             const w = new ExcelJS.Workbook(), s = w.addWorksheet('RTM'); 
             s.columns = [{header: 'ID', key: 'id'}, {header: 'Title', key: 't'}, {header: 'Text', key: 'txt'}, {header: 'Memo', key: 'm'}]; 
-            // [修正] Excel 匯出防呆
             annotations.forEach(a => {
                  const txt = a.type === 'area' ? (a.imageData ? '[圖片]' : '[螢光筆標記]') : a.text;
                  s.addRow({id: a.rtmId, t: a.title, txt: txt, m: a.memo.replace(/<[^>]+>/g, '')});
@@ -1460,7 +1466,7 @@
         }
 
         function jumpAndEdit(id) {
-            const ann = annotations.find(a => a.id === id);
+            const ann = annotations.find(a => String(a.id) === String(id));
             if (ann) {
                 scrollToAnnotation(ann);
                 setTimeout(() => openModal(ann), 300);
