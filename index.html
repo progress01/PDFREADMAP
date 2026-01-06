@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V13.3 - Classic UI Stable)</title>
+    <title>PDF 閱讀地圖 (Ultimate V13.4 - Auto Expand)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -18,7 +18,7 @@
 
     <style>
         /* =========================================
-           1. 全域變數與主題 (還原 V11.5 設定)
+           1. 全域變數與主題
            ========================================= */
         :root {
             --bg-color: #525659;
@@ -54,7 +54,7 @@
         }
 
         /* =========================================
-           2. 工具列樣式 (還原 V11.5)
+           2. 工具列樣式
            ========================================= */
         .toolbar { 
             background: #222; color: white; padding: 10px 20px; 
@@ -127,16 +127,12 @@
         
         .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
         
-        /* [保留功能] V13.2 的核心修復：
-           提高 z-index 確保螢光筆可以被點擊，
-           但樣式保持 V11.5 的風格 (紅框改為半透明黃底，符合螢光筆直覺) 
-        */
         .highlight-area { 
             position: absolute; 
             border: 2px solid; 
-            background-color: rgba(255, 235, 59, 0.3); /* 半透明黃 */
+            background-color: rgba(255, 235, 59, 0.3); 
             cursor: pointer; 
-            z-index: 60; /* 重要：確保在文字層之上 */
+            z-index: 60; 
             transition: 0.2s; 
             pointer-events: auto;
         }
@@ -149,7 +145,7 @@
         @keyframes flash { 0%, 100% { opacity: 1; border-color: red; box-shadow: 0 0 15px red; } 50% { opacity: 0.2; } }
 
         /* =========================================
-           4. 側邊欄 (Sidebar)
+           4. 側邊欄 (Sidebar) - [優化] 展開效果
            ========================================= */
         .sidebar { width: 320px; background: var(--sidebar-bg); border-left: 1px solid #ccc; display: flex; flex-direction: column; z-index: 90; color: var(--sidebar-text); transition: background 0.3s; }
         
@@ -166,12 +162,42 @@
         .sidebar-filter { width: 100%; padding: 5px; font-size: 0.9em; border: 1px solid #ccc; border-radius: 4px; background: var(--input-bg); color: var(--input-text); }
         .sidebar-list { flex: 1; overflow-y: auto; padding: 10px; }
         
-        .list-item { background: var(--item-bg); padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--item-border); cursor: pointer; border-left: 5px solid #ccc; transition: 0.2s; position: relative; padding-right: 50px; }
-        .list-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background-color: #fafafa; }
+        .list-item { 
+            background: var(--item-bg); padding: 10px; margin-bottom: 8px; border-radius: 8px; 
+            border: 1px solid var(--item-border); cursor: pointer; border-left: 5px solid #ccc; 
+            transition: all 0.2s; position: relative; padding-right: 50px; 
+        }
+        .list-item:hover { 
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            background-color: #fafafa; z-index: 10; /* 懸停時浮起 */
+        }
         .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
         .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
         .icon-btn:hover { background: #eee; color: #000; }
         .tag-badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 0.75em; color: white; background: #999; margin-right: 5px; vertical-align: middle; }
+
+        /* [新增] 內容自動展開的樣式 */
+        .text-preview {
+            font-size: 0.85em; color: #666;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* 預設不換行 */
+            transition: all 0.3s ease;
+        }
+        .memo-preview {
+            margin-top: 5px; border-top: 1px dashed #eee; padding-top: 5px;
+            font-size: 0.85em; color: #444;
+            max-height: 4.5em; overflow: hidden; /* 預設只顯示約3行 */
+            transition: max-height 0.5s ease;
+        }
+        
+        /* 懸停時展開 */
+        .list-item:hover .text-preview {
+            white-space: normal; /* 允許換行 */
+            overflow: visible;
+        }
+        .list-item:hover .memo-preview {
+            max-height: 800px; /* 設定一個夠大的高度讓它展開 */
+            overflow: visible;
+        }
 
         .bookmark-item { background: var(--item-bg); padding: 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid var(--item-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         body.dark-mode .bookmark-item:hover { background: #444; }
@@ -201,7 +227,6 @@
             border-radius: 12px; display: flex; flex-direction: column; gap: 12px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto; 
             pointer-events: auto; border: 1px solid #999;
-            /* 關鍵：編輯視窗固定右側，還原 V11.5 設定 */
             top: 50px; right: 20px; left: auto;
         }
         .modal-drag-handle { cursor: move; user-select: none; }
@@ -239,7 +264,7 @@
         .memo-content img { max-width: 100%; border: 1px solid #ccc; margin-top: 5px; }
         .memo-link:hover { background-color: rgba(255, 255, 0, 0.3); text-decoration: none; }
         
-        /* 擴充功能的視窗 (雖然按鈕藏起來了，但功能保留) */
+        /* 擴充功能視窗 */
         .patch-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 6000; justify-content: center; align-items: center; }
         .patch-card { background: white; width: 80%; height: 85%; border-radius: 8px; display: flex; flex-direction: column; padding: 20px; position: relative; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
         .patch-close { position: absolute; top: 10px; right: 15px; font-size: 1.5em; cursor: pointer; color: #666; }
@@ -253,7 +278,7 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V13.3</h1>
+        <h1>🛠️ V13.4</h1>
         
         <div class="mode-switch">
             <div class="mode-btn" id="modeText" onclick="setMode('text')">📝 抓文字</div>
@@ -293,7 +318,7 @@
         </div>
 
         <button class="ai-btn" onclick="openAIModal()">🤖 AI 提示詞助手</button>
-        </div>
+    </div>
 
     <div class="reader-toolbar" id="readToolbar">
         <div style="display:flex; align-items:center; gap:15px;">
@@ -310,8 +335,8 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V13.3 (Classic UI Stable)</p>
-                <p style="font-size:0.8em; color:#666;">介面已還原，修復功能保留</p>
+                <p>V13.4 (Auto Expand)</p>
+                <p style="font-size:0.8em; color:#666;">側邊欄內容懸停自動展開，支援長筆記</p>
             </div>
             
             <div id="searchPanel">
@@ -584,7 +609,7 @@
         let activePageDiv = null;
         let activePageNum = 0;
 
-        const AUTOSAVE_KEY = 'pdf_ult_v13_3'; 
+        const AUTOSAVE_KEY = 'pdf_ult_v13_4'; 
         const TEMPLATE_KEY = 'pdf_ult_v13_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
@@ -911,7 +936,7 @@
         }
 
         // =========================================
-        // 6. 側邊欄與連結
+        // 6. 側邊欄與連結 (核心修正：Auto Expand)
         // =========================================
         function renderSidebar() {
             const list = document.getElementById('sidebarList'); 
@@ -944,14 +969,15 @@
                 d.style.borderLeftColor = a.color;
                 const displayMemo = formatMemoLinks(a.memo);
                 
+                // [修正] 使用 class 代替 inline style，並套用 text-preview 與 memo-preview
                 d.innerHTML = `
                     <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;">
                         <span>P.${a.page} ${a.type==='area'?'🖼️':'📝'}</span><span>${a.priority}</span>
                     </div>
                     <div style="font-weight:bold;margin:4px 0;font-size:1em;">${a.title||a.code}</div>
                     <div style="margin-bottom:4px;"><span class="tag-badge" style="background:${a.color}">${a.code}</span></div>
-                    <div style="font-size:0.85em;color:#666;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${a.rtmId ? `<b>[${a.rtmId}]</b> ` : ''}${a.text}</div>
-                    <div class="memo-content" style="margin-top:5px;border-top:1px dashed #eee;padding-top:5px;font-size:0.85em;color:#444;">${displayMemo}</div>
+                    <div class="text-preview">${a.rtmId ? `<b>[${a.rtmId}]</b> ` : ''}${a.text}</div>
+                    <div class="memo-preview">${displayMemo}</div>
                     <div class="item-actions">
                         <button class="icon-btn" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
                         <button class="icon-btn" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
