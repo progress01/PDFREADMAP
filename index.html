@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF 閱讀地圖 (Ultimate V13.4 - Auto Expand)</title>
+    <title>PDF 閱讀地圖 (V13.5)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
@@ -67,6 +67,14 @@
             display: none; align-items: center; gap: 15px; 
             border-bottom: 1px solid #555; animation: slideDown 0.3s ease-out; z-index: 99;
         }
+
+        /* 塗鴉專用工具列 */
+        .drawing-toolbar {
+            background: #2c3e50; color: white; padding: 5px 20px;
+            display: none; align-items: center; gap: 10px; 
+            border-bottom: 1px solid #555; animation: slideDown 0.3s ease-out; z-index: 98;
+        }
+
         @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
         .reader-toolbar { 
@@ -127,6 +135,7 @@
         
         .highlight-text { background-color: rgba(255, 235, 59, 0.4); border-bottom: 2px solid #e6a800; cursor: pointer; }
         
+        /* 螢光筆區域 (z-index 60, 保證在塗鴉層之上，可點擊) */
         .highlight-area { 
             position: absolute; 
             border: 2px solid; 
@@ -141,11 +150,20 @@
             box-shadow: 0 0 8px rgba(0,0,0,0.2);
         }
         
+        /* 塗鴉畫布層 (z-index 55, 在文字層上, 螢光筆下) */
+        .drawing-canvas {
+            position: absolute; top: 0; left: 0;
+            z-index: 55; 
+            pointer-events: none; /* 預設不擋滑鼠 */
+        }
+        /* 只有在 drawing-mode 時才接收滑鼠事件 */
+        body.drawing-mode .drawing-canvas { pointer-events: auto; cursor: crosshair; }
+        
         .highlight-flash { animation: flash 1s ease-in-out; }
         @keyframes flash { 0%, 100% { opacity: 1; border-color: red; box-shadow: 0 0 15px red; } 50% { opacity: 0.2; } }
 
         /* =========================================
-           4. 側邊欄 (Sidebar) - [優化] 展開效果
+           4. 側邊欄 (Sidebar)
            ========================================= */
         .sidebar { width: 320px; background: var(--sidebar-bg); border-left: 1px solid #ccc; display: flex; flex-direction: column; z-index: 90; color: var(--sidebar-text); transition: background 0.3s; }
         
@@ -169,35 +187,27 @@
         }
         .list-item:hover { 
             transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-            background-color: #fafafa; z-index: 10; /* 懸停時浮起 */
+            background-color: #fafafa; z-index: 10; 
         }
         .item-actions { position: absolute; top: 5px; right: 5px; display: flex; flex-direction: column; gap: 2px; }
         .icon-btn { width: 24px; height: 24px; border: none; background: transparent; border-radius: 4px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 14px; color: #666; transition: 0.2s; }
         .icon-btn:hover { background: #eee; color: #000; }
         .tag-badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 0.75em; color: white; background: #999; margin-right: 5px; vertical-align: middle; }
 
-        /* [新增] 內容自動展開的樣式 */
+        /* 自動展開 */
         .text-preview {
             font-size: 0.85em; color: #666;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; /* 預設不換行 */
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             transition: all 0.3s ease;
         }
         .memo-preview {
             margin-top: 5px; border-top: 1px dashed #eee; padding-top: 5px;
             font-size: 0.85em; color: #444;
-            max-height: 4.5em; overflow: hidden; /* 預設只顯示約3行 */
+            max-height: 4.5em; overflow: hidden; 
             transition: max-height 0.5s ease;
         }
-        
-        /* 懸停時展開 */
-        .list-item:hover .text-preview {
-            white-space: normal; /* 允許換行 */
-            overflow: visible;
-        }
-        .list-item:hover .memo-preview {
-            max-height: 800px; /* 設定一個夠大的高度讓它展開 */
-            overflow: visible;
-        }
+        .list-item:hover .text-preview { white-space: normal; overflow: visible; }
+        .list-item:hover .memo-preview { max-height: 800px; overflow: visible; }
 
         .bookmark-item { background: var(--item-bg); padding: 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid var(--item-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         body.dark-mode .bookmark-item:hover { background: #444; }
@@ -231,7 +241,16 @@
         }
         .modal-drag-handle { cursor: move; user-select: none; }
         input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-family: inherit; background: var(--input-bg); color: var(--input-text); }
-        .preview-box { background: #f0f0f0; padding: 10px; font-size: 0.9em; max-height: 150px; overflow-y: auto; border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; resize: vertical; outline: none; color:#333; }
+        
+        /* 可編輯的預覽框 (Textarea) */
+        .preview-box { 
+            background: #f0f0f0; padding: 10px; font-size: 0.9em; 
+            min-height: 80px; max-height: 150px; overflow-y: auto; 
+            border-radius: 4px; margin-bottom: 10px; border: 1px solid #ccc; 
+            resize: vertical; outline: none; color:#333; font-family: inherit;
+            width: 100%; box-sizing: border-box;
+        }
+        
         .memo-toolbar { display: flex; gap: 5px; margin-bottom: 5px; background: #eee; padding: 5px; border-radius: 4px; flex-wrap: wrap; }
         body.dark-mode .memo-toolbar { background: #444; }
         .rich-memo { width: 100%; min-height: 100px; max-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; overflow-y: auto; background: var(--input-bg); color: var(--input-text); line-height: 1.5; font-size: 0.95em; }
@@ -256,7 +275,6 @@
         .lightbox img { max-width: 90%; max-height: 85%; box-shadow: 0 0 20px rgba(255,255,255,0.2); border: 2px solid white; object-fit: contain; }
         .list-item img { cursor: zoom-in; transition: 0.2s; } .list-item img:hover { opacity: 0.8; outline: 2px solid #007bff; }
         
-        /* Markdown 樣式 */
         .memo-content blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 10px; color: #666; }
         .memo-content pre { background: #f4f4f4; padding: 5px; border-radius: 4px; overflow-x: auto; }
         .memo-content code { font-family: monospace; background: #eee; padding: 2px 4px; border-radius: 3px; }
@@ -264,7 +282,6 @@
         .memo-content img { max-width: 100%; border: 1px solid #ccc; margin-top: 5px; }
         .memo-link:hover { background-color: rgba(255, 255, 0, 0.3); text-decoration: none; }
         
-        /* 擴充功能視窗 */
         .patch-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 6000; justify-content: center; align-items: center; }
         .patch-card { background: white; width: 80%; height: 85%; border-radius: 8px; display: flex; flex-direction: column; padding: 20px; position: relative; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
         .patch-close { position: absolute; top: 10px; right: 15px; font-size: 1.5em; cursor: pointer; color: #666; }
@@ -278,11 +295,12 @@
     <div id="loader"><div class="spinner"></div><h3 id="loaderText">處理中...</h3></div>
 
     <div class="toolbar" id="editToolbar">
-        <h1>🛠️ V13.4</h1>
+        <h1>🛠️ V13.5</h1>
         
         <div class="mode-switch">
             <div class="mode-btn" id="modeText" onclick="setMode('text')">📝 抓文字</div>
             <div class="mode-btn active" id="modeArea" onclick="setMode('area')">🖍️ 螢光筆</div>
+            <div class="mode-btn" id="modeDraw" onclick="setMode('draw')">🎨 塗鴉</div>
         </div>
 
         <button onclick="openSettings()">⚙️ 設定</button>
@@ -320,6 +338,14 @@
         <button class="ai-btn" onclick="openAIModal()">🤖 AI 提示詞助手</button>
     </div>
 
+    <div class="drawing-toolbar" id="drawingToolbar">
+        <span style="font-weight:bold;">🎨 塗鴉工具</span>
+        <input type="color" id="drawColor" value="#ff0000" title="筆刷顏色">
+        <input type="range" id="drawSize" min="1" max="10" value="2" title="筆刷粗細" style="width:100px;">
+        <button style="font-size:0.8em; padding:2px 8px;" onclick="setEraser()">🧽 橡皮擦</button>
+        <button style="font-size:0.8em; padding:2px 8px;" onclick="clearCurrentCanvas()">🗑️ 清空此頁</button>
+    </div>
+
     <div class="reader-toolbar" id="readToolbar">
         <div style="display:flex; align-items:center; gap:15px;">
             <h1 style="color:#28a745;">📖 閱讀模式</h1>
@@ -335,8 +361,8 @@
         <div id="viewerContainer">
             <div style="margin-top:100px; color:#aaa; text-align:center;" id="placeholder">
                 <h3>請匯入 PDF</h3>
-                <p>V13.4 (Auto Expand)</p>
-                <p style="font-size:0.8em; color:#666;">側邊欄內容懸停自動展開，支援長筆記</p>
+                <p>V13.5 (Drawing Board)</p>
+                <p style="font-size:0.8em; color:#666;">新增塗鴉功能與預覽文字編輯</p>
             </div>
             
             <div id="searchPanel">
@@ -418,8 +444,9 @@
     <div class="modal" id="editorModal">
         <div class="modal-card" id="editorCard">
             <h3 id="modalTitle" class="modal-drag-handle" style="margin:0; border-bottom:1px solid #eee; padding-bottom:10px;">🖍️ 編輯標註</h3>
-            <label style="font-size:0.8em; color:#666; margin-top:10px;">內容預覽</label>
-            <div id="quotePreview" class="preview-box"></div>
+            <label style="font-size:0.8em; color:#666; margin-top:10px;">內容預覽 (可編輯修正)</label>
+            <textarea id="quotePreview" class="preview-box"></textarea>
+            
             <div style="display:flex; gap:10px;">
                 <div style="flex:1"><label>RTM ID</label><input type="text" id="rtmId" placeholder="例: REQ-0001"></div>
                 <div style="flex:2"><label>標題</label><input type="text" id="rtmTitle" placeholder="輸入標題..."></div>
@@ -588,6 +615,9 @@
         let pdfDoc = null;
         let annotations = [];
         let bookmarks = [];
+        // [新增] 塗鴉資料
+        let drawings = []; 
+        
         let BATCH_SIZE = 10;
         let currentBatchIndex = 0;
         let totalBatches = 0;
@@ -608,8 +638,15 @@
         let currentMarquee = null;
         let activePageDiv = null;
         let activePageNum = 0;
+        
+        // [新增] 塗鴉相關變數
+        let isDrawing = false;
+        let drawingCanvas = null;
+        let drawingCtx = null;
+        let drawingColor = "#ff0000";
+        let drawingSize = 2;
 
-        const AUTOSAVE_KEY = 'pdf_ult_v13_4'; 
+        const AUTOSAVE_KEY = 'pdf_ult_v13_5'; 
         const TEMPLATE_KEY = 'pdf_ult_v13_tpl';
         let tagPresets = [{ name: "功能需求", color: "#ffc107" }, { name: "資安規範", color: "#dc3545" }];
 
@@ -651,7 +688,11 @@
             document.getElementById('imageUploadInput').addEventListener('change', handleImageInsert);
             makeDraggable(document.getElementById("editorCard"), document.getElementById("modalTitle"));
             
-            // 初始化 Patch UI 但不自動掛載按鈕到 Toolbar
+            // 塗鴉設定監聽
+            document.getElementById('drawColor').addEventListener('input', (e) => drawingColor = e.target.value);
+            document.getElementById('drawSize').addEventListener('input', (e) => drawingSize = e.target.value);
+            
+            // 初始化 Patch UI
             setTimeout(() => {
                 enablePasteImage();
                 mermaid.initialize({ startOnLoad: false, theme: 'default' });
@@ -712,6 +753,7 @@
         // =========================================
         function enableBoxSelection(pageDiv, pageNum) {
             pageDiv.addEventListener('mousedown', (e) => {
+                if (editMode === 'draw') return; // 塗鴉模式下不觸發框選
                 if (isSpacePressed || e.target.closest('.highlight-text, .highlight-area')) return;
                 
                 isMouseDragging = true;
@@ -825,7 +867,9 @@
                 id: newId, ...currentSelection, rtmId: genId(), 
                 title: currentSelection.text.substring(0, 10), 
                 code: lastUsedSettings.code, color: lastUsedSettings.color, 
-                priority: 'Medium', status: 'New', memo: '', timestamp: new Date().toISOString()
+                priority: 'Medium', status: 'New', memo: '', timestamp: new Date().toISOString(),
+                // [修正] 靜默標記 flag
+                isSilent: true 
             };
             annotations.push(newAnn);
             
@@ -845,7 +889,8 @@
             document.getElementById('codeColor').value = ex ? ex.color : lastUsedSettings.color;
             document.getElementById('codeMemo').innerHTML = ex ? ex.memo : ''; 
             currentSelection.id = ex ? ex.id : null;
-            document.getElementById('quotePreview').innerHTML = currentSelection.type === 'area' ? '(螢光筆區域)' : currentSelection.text;
+            // [修正] 預覽內容放入 Textarea 的 value
+            document.getElementById('quotePreview').value = currentSelection.type === 'area' ? '(螢光筆區域)' : currentSelection.text;
             
             if (ex && ex.id) {
                 document.getElementById('btnModalDelete').style.display = 'block';
@@ -862,12 +907,14 @@
             document.querySelectorAll('#customFieldsContainer input').forEach(i => cd[i.dataset.key] = i.value);
             const nd = {
                 type: currentSelection.type, page: currentSelection.page, 
-                text: currentSelection.type === 'text' ? document.getElementById('quotePreview').innerText : currentSelection.text, 
+                // [修正] 讀取 Textarea 的 value
+                text: currentSelection.type === 'text' ? document.getElementById('quotePreview').value : currentSelection.text, 
                 rect: currentSelection.rect, imageData: currentSelection.imageData, 
                 rtmId: document.getElementById('rtmId').value, title: document.getElementById('rtmTitle').value, 
                 code: document.getElementById('codeName').value, color: document.getElementById('codeColor').value, 
                 priority: document.getElementById('rtmPriority').value, status: document.getElementById('rtmStatus').value, 
-                memo: document.getElementById('codeMemo').innerHTML, customData: cd, timestamp: new Date().toISOString()
+                memo: document.getElementById('codeMemo').innerHTML, customData: cd, timestamp: new Date().toISOString(),
+                isSilent: false // 一般儲存的不是靜默
             };
             lastUsedSettings = { code: nd.code, color: nd.color };
             
@@ -906,16 +953,21 @@
                 area.style.backgroundColor = ann.color + '4D'; 
                 area.style.borderColor = ann.color;
                 
-                area.onclick = (e) => { e.stopPropagation(); jumpAndEdit(ann.id); }; 
+                // [修正] 如果是靜默標記，點擊直接詢問刪除；否則打開編輯器
+                area.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if(ann.isSilent) {
+                        if(confirm('這是靜默標記，要刪除嗎？')) deleteItem(ann.id);
+                    } else {
+                        jumpAndEdit(ann.id); 
+                    }
+                }; 
                 div.appendChild(area); 
             }
         }
 
         function deleteItem(id) {
-            if (!confirm('確定刪除此標註？')) return;
-            
             annotations = annotations.filter(a => String(a.id) !== String(id));
-            
             renderSidebar();
             saveToLocal();
 
@@ -936,7 +988,7 @@
         }
 
         // =========================================
-        // 6. 側邊欄與連結 (核心修正：Auto Expand)
+        // 6. 側邊欄與連結
         // =========================================
         function renderSidebar() {
             const list = document.getElementById('sidebarList'); 
@@ -947,6 +999,9 @@
             document.getElementById('count').innerText = annotations.length;
 
             let filtered = annotations.filter(a => {
+                // [修正] 不顯示靜默標記
+                if (a.isSilent) return false;
+
                 if (filterVal === 'High' && a.priority !== 'High') return false;
                 if (filterVal === 'Pending' && a.status !== 'Pending') return false;
                 if (filterVal === 'Image' && a.type !== 'area') return false;
@@ -969,7 +1024,6 @@
                 d.style.borderLeftColor = a.color;
                 const displayMemo = formatMemoLinks(a.memo);
                 
-                // [修正] 使用 class 代替 inline style，並套用 text-preview 與 memo-preview
                 d.innerHTML = `
                     <div style="display:flex;justify-content:space-between;font-size:0.85em;color:#888;">
                         <span>P.${a.page} ${a.type==='area'?'🖼️':'📝'}</span><span>${a.priority}</span>
@@ -980,7 +1034,7 @@
                     <div class="memo-preview">${displayMemo}</div>
                     <div class="item-actions">
                         <button class="icon-btn" onclick="event.stopPropagation();jumpAndEdit('${a.id}')">✏️</button>
-                        <button class="icon-btn" onclick="event.stopPropagation();deleteItem('${a.id}')">🗑️</button>
+                        <button class="icon-btn" onclick="event.stopPropagation();if(confirm('刪除？'))deleteItem('${a.id}')">🗑️</button>
                     </div>`;
                 
                 d.onclick = () => scrollToAnnotation(a);
@@ -1157,13 +1211,105 @@
             const c = document.createElement('canvas'); c.width = v.width; c.height = v.height; 
             const t = document.createElement('div'); t.className = 'textLayer'; t.style.width = v.width+'px'; t.style.height = v.height+'px'; 
             d.append(c, t); 
+            
+            // [新增] 塗鴉畫布層
+            const drawC = document.createElement('canvas');
+            drawC.className = 'drawing-canvas';
+            drawC.width = v.width; drawC.height = v.height;
+            drawC.id = 'draw-layer-' + n;
+            setupCanvasEvents(drawC, n);
+            d.appendChild(drawC);
+            
             document.getElementById('viewerContainer').appendChild(d); 
             
             await p.render({canvasContext: c.getContext('2d'), viewport: v}).promise; 
             pdfjsLib.renderTextLayer({textContent: await p.getTextContent(), container: t, viewport: v, textDivs: []}); 
             
             if(!isReaderMode) enableBoxSelection(d, n); 
-            restoreHighlights(n, d); 
+            restoreHighlights(n, d);
+            restoreDrawing(n, drawC); // 載入塗鴉
+        }
+        
+        // [新增] 塗鴉功能核心
+        function setupCanvasEvents(canvas, pageNum) {
+            const ctx = canvas.getContext('2d');
+            
+            canvas.addEventListener('mousedown', (e) => {
+                if(editMode !== 'draw') return;
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                ctx.beginPath();
+                ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+                ctx.strokeStyle = drawingColor;
+                ctx.lineWidth = drawingSize;
+                ctx.lineCap = 'round';
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if(!isDrawing || editMode !== 'draw') return;
+                const rect = canvas.getBoundingClientRect();
+                ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+                ctx.stroke();
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                if(isDrawing) {
+                    isDrawing = false;
+                    saveDrawingData(pageNum, canvas);
+                }
+            });
+            
+            canvas.addEventListener('mouseout', () => isDrawing = false);
+        }
+        
+        function saveDrawingData(pageNum, canvas) {
+            const dataUrl = canvas.toDataURL();
+            const existingIdx = drawings.findIndex(d => d.page === pageNum);
+            if(existingIdx >= 0) {
+                drawings[existingIdx].dataUrl = dataUrl;
+            } else {
+                drawings.push({ page: pageNum, dataUrl });
+            }
+            saveToLocal();
+        }
+        
+        // [修復] 縮放相容性：使用 drawImage 參數讓圖片拉伸以適應當前 Canvas 大小
+        function restoreDrawing(pageNum, canvas) {
+            const saved = drawings.find(d => d.page === pageNum);
+            if(saved) {
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height); // 關鍵修復
+                img.src = saved.dataUrl;
+            }
+        }
+        
+        function setEraser() {
+            drawingColor = "rgba(0,0,0,0)"; // 橡皮擦邏輯可用 globalCompositeOperation
+            // 簡單實作：切換到 destination-out
+            const canvases = document.querySelectorAll('.drawing-canvas');
+            canvases.forEach(c => c.getContext('2d').globalCompositeOperation = 'destination-out');
+        }
+        
+        function setPenMode() {
+             const canvases = document.querySelectorAll('.drawing-canvas');
+             canvases.forEach(c => c.getContext('2d').globalCompositeOperation = 'source-over');
+             drawingColor = document.getElementById('drawColor').value;
+        }
+        
+        // 監聽顏色選擇器，恢復筆刷模式
+        document.getElementById('drawColor').addEventListener('change', setPenMode);
+        
+        function clearCurrentCanvas() {
+            if(activePageDiv) {
+                const p = parseInt(activePageDiv.dataset.pageNumber);
+                const c = document.getElementById('draw-layer-' + p);
+                if(c) {
+                    const ctx = c.getContext('2d');
+                    ctx.clearRect(0, 0, c.width, c.height);
+                    saveDrawingData(p, c);
+                }
+            }
         }
         
         function scrollToAnnotation(a){ 
@@ -1199,15 +1345,17 @@
             };
         }
 
-        function saveToLocal(){ if(!isReaderMode) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({annotations, bookmarks, globalMemo})); }
+        // [修正] 儲存增加 drawings
+        function saveToLocal(){ if(!isReaderMode) localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({annotations, bookmarks, globalMemo, drawings})); }
         
         function checkAutoSave(){
             const s = localStorage.getItem(AUTOSAVE_KEY);
             if(s){
                 try {
                     const d = JSON.parse(s);
-                    if((d.annotations.length || d.bookmarks.length) && confirm("復原未存檔?")){ 
+                    if((d.annotations.length || d.bookmarks.length || (d.drawings && d.drawings.length)) && confirm("復原未存檔?")){ 
                         annotations = d.annotations; bookmarks = d.bookmarks || []; globalMemo = d.globalMemo || ""; 
+                        drawings = d.drawings || [];
                         renderSidebar(); renderBookmarks(); 
                     }
                 } catch(e){}
@@ -1217,21 +1365,28 @@
         function clearAutoSave() {
             if(confirm("確定清空所有索引列表？")) {
                 annotations = [];
+                drawings = []; // 清空塗鴉
                 renderSidebar();
                 saveToLocal();
                 document.querySelectorAll('.highlight-text, .highlight-area').forEach(el => el.remove());
+                // 清空畫布
+                document.querySelectorAll('.drawing-canvas').forEach(c => {
+                    c.getContext('2d').clearRect(0,0,c.width,c.height);
+                });
             }
         }
 
         function saveProject(){ 
-            download(JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, lastBatch: currentBatchIndex}), `Proj_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); 
+            download(JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, drawings, lastBatch: currentBatchIndex}), `Proj_${new Date().toISOString().slice(0,10)}.json`, 'application/json'); 
         }
 
         function handleProjectLoad(i){
             const r = new FileReader();
             r.onload = e => {
                 const d = JSON.parse(e.target.result);
-                annotations = d.annotations || []; bookmarks = d.bookmarks || []; tagPresets = d.presets || tagPresets; globalMemo = d.globalMemo || ""; currentBatchIndex = d.lastBatch || 0;
+                annotations = d.annotations || []; bookmarks = d.bookmarks || []; tagPresets = d.presets || tagPresets; globalMemo = d.globalMemo || ""; 
+                drawings = d.drawings || [];
+                currentBatchIndex = d.lastBatch || 0;
                 renderSidebar(); renderBookmarks(); saveToLocal(); renderCurrentBatch();
             };
             r.readAsText(i.files[0]); i.value = '';
@@ -1239,7 +1394,7 @@
 
         function exportReaderHtml(){ 
             let h = document.documentElement.outerHTML; 
-            const d = JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo}); 
+            const d = JSON.stringify({annotations, bookmarks, presets: tagPresets, customFields, globalMemo, drawings}); 
             download(h.replace(/<script id="embedded-data".*?<\/script>/, `<script id="embedded-data" type="application/json">${d}<\/script>`), 'Reader.html', 'text/html'); 
         }
 
@@ -1317,7 +1472,13 @@
             editMode = m; 
             document.getElementById('modeText').classList.toggle('active', m === 'text'); 
             document.getElementById('modeArea').classList.toggle('active', m === 'area'); 
-            document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : 'crosshair'); 
+            document.getElementById('modeDraw').classList.toggle('active', m === 'draw');
+            
+            // 塗鴉工具列顯示
+            document.getElementById('drawingToolbar').style.display = m === 'draw' ? 'flex' : 'none';
+            document.body.classList.toggle('drawing-mode', m === 'draw');
+            
+            document.querySelectorAll('.pdf-page').forEach(p => p.style.cursor = m === 'text' ? 'text' : (m==='draw' ? 'crosshair' : 'crosshair')); 
         }
 
         // =========================================
@@ -1394,6 +1555,7 @@
                     tagPresets = data.presets || tagPresets;
                     customFields = data.customFields || [];
                     globalMemo = data.globalMemo || "";
+                    drawings = data.drawings || [];
                     renderSidebar();
                     renderBookmarks();
                     alert("已載入內嵌專案數據");
@@ -1550,7 +1712,36 @@
         // =========================================
         // 10. Patch Features (Mermaid & Charts)
         // =========================================
-        // Patch UI 被隱藏，但仍可透過程式呼叫 (若未來需要可隨時解除隱藏)
+        function initPatchUI() {
+            const bar = document.getElementById('advancedToolbar');
+            if(!bar) return;
+            
+            // 避免重複加入
+            if(document.getElementById('btnGraph')) return;
+
+            const sep = document.createElement('span'); 
+            sep.innerHTML = '|'; sep.style.color = '#555';
+            bar.appendChild(sep);
+        
+            const btnGraph = createPatchBtn('🕸️ 關聯圖', openGraphModal, 'btnGraph');
+            const btnDash = createPatchBtn('📊 統計', openDashboardModal, 'btnDash');
+            const btnBatch = createPatchBtn('🏷️ 管理標籤', openBatchTagModal, 'btnBatch');
+            
+            bar.appendChild(btnGraph);
+            bar.appendChild(btnDash);
+            bar.appendChild(btnBatch);
+        }
+        
+        function createPatchBtn(text, func, id) {
+            const btn = document.createElement('button');
+            btn.innerText = text;
+            btn.onclick = func;
+            if(id) btn.id = id;
+            btn.style.marginLeft = "10px";
+            btn.className = "info";
+            return btn;
+        }
+        
         function enablePasteImage() {
             const memoBox = document.getElementById('codeMemo');
             if (!memoBox) return;
